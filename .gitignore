@@ -1,0 +1,14 @@
+hooks-events.jsonl
+*.baseline.jsonl
+*.db
+*.db-wal
+*.db-shm
+.vscode/
+node_modules/
+
+# Claude
+CLAUDE.md
+
+# Directorios de pruebas
+claude-office-test
+pruebas
