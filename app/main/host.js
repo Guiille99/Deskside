@@ -10,7 +10,7 @@ let rows = {};
 
 const push = () => {
   if (!model) return;
-  const next = toRows(presence(model, Date.now()));
+  const next = toRows(presence(model, Date.now()), model);
   const d = diff(rows, next);
   rows = next;
   if (d.upsert.length || d.remove.length) post({ type: 'delta', delta: d });

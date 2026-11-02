@@ -2,8 +2,9 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <!-- img-src data:: Phaser carga sus texturas por defecto desde URI data:. -->
     <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'" />
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>Claude Office</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
@@ -11,15 +12,13 @@
     <header class="flex items-center gap-4 border-b border-slate-800 px-4 py-3">
       <h1 class="text-base font-semibold">Claude Office</h1>
       <span id="status" class="rounded px-2 py-0.5 text-xs"></span>
-      <label class="ml-auto flex items-center gap-2 text-xs text-slate-400">
-        <input id="show-ended" type="checkbox" /> Mostrar terminadas
-      </label>
+      <span class="ml-auto text-xs text-slate-400">Ámbar: sesión · Azul: subagente (padre inferido) · Violeta: visitante · Rueda: desplazar</span>
     </header>
     <main class="grid gap-6 p-4">
-      <section><h2 class="mb-2 font-semibold">Sesiones</h2><div id="sessions"></div></section>
-      <section><h2 class="mb-2 font-semibold">Agentes</h2><div id="agents"></div></section>
+      <section><div id="scene" class="h-[65vh] overflow-hidden rounded border border-slate-800"></div></section>
       <section><h2 class="mb-2 font-semibold">Proyectos</h2><div id="projects"></div></section>
     </main>
+    <div id="hud" hidden class="pointer-events-none fixed z-10 rounded border border-slate-700 bg-slate-900/95 px-3 py-2 text-xs shadow-lg"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -6,30 +6,48 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { toRows, diff, applyDelta } from '../main/rows.js';
 import { listProjects, setPolicy } from '../main/policy.js';
+import { buildModel } from '../../backend/src/hierarchy.js';
+import { presence } from '../../backend/src/presence.js';
+import { ALL_FIELDS } from '../../backend/src/validator.js';
 
+// Fixtures sintéticos con la forma que H1 guarda (NULL para lo ausente).
 const S = '11111111-1111-1111-1111-111111111111';
-const p = (state, since, agentState = 'WORKING') => ({
-  sessions: [{ session_id: S, project_id: null, state, since, starts: [{ x: 1 }] }],
-  agents: [{ session_id: S, source_id: 'hooks', agent_id: 'a1', agent_types: ['Explore'], state: agentState, since, events: [{ x: 1 }] }],
-});
+const T0 = Date.UTC(2026, 10, 2, 10, 0, 0);
+let seq = 0;
+const E = (event, s, o = {}) => ({ source_id: 'hooks', byte_offset: seq++, timestamp: `${new Date(T0 + s * 1000).toISOString().slice(0, 19)}.1234567+00:00`,
+  event, session_id: S, ...Object.fromEntries(ALL_FIELDS.slice(3).map((k) => [k, null])), ...o });
+// MAIN lanza a1 (INFERRED) y deja Bash abierta; a1 usa Read y termina; a2 solo tiene SubagentStop (visitante).
+const EVENTS = [
+  E('SessionStart', 0), E('UserPromptSubmit', 1),
+  E('PreToolUse', 2, { tool_name: 'Agent', tool_use_id: 't1' }), E('SubagentStart', 3, { agent_id: 'a1', agent_type: 'Explore' }),
+  E('PreToolUse', 4, { tool_name: 'Read', tool_use_id: 't2', agent_id: 'a1' }), E('PostToolUse', 5, { tool_name: 'Read', tool_use_id: 't2', agent_id: 'a1' }),
+  E('PostToolUse', 6, { tool_name: 'Agent', tool_use_id: 't1' }), E('PreToolUse', 7, { tool_name: 'Bash', tool_use_id: 't3' }),
+  E('SubagentStop', 30, { agent_id: 'a2' }),
+];
+const rowsAt = (events, s) => { const m = buildModel(events); return toRows(presence(m, T0 + s * 1000), m); };
 
-test('toRows: filas planas, hora en ms y sin referencias a eventos', () => {
-  const r = toRows(p('IDLE', '2026-11-02T10:00:00.1234567+00:00'));
-  assert.deepEqual(r[`s:${S}`], { kind: 'session', session_id: S, project_id: null, state: 'IDLE', since: Date.UTC(2026, 10, 2, 10, 0, 0, 123) });
-  assert.equal(r[`a:${S}:hooks:a1`].since, Date.UTC(2026, 10, 2, 10, 0, 0, 123));
-  assert.ok(!JSON.stringify(r).includes('"x"'));
-  assert.equal(toRows(p('IDLE', null))[`s:${S}`].since, null);
+test('toRows: filas planas con herramienta abierta, padre, recuentos y sin referencias a eventos', () => {
+  const r = rowsAt(EVENTS, 31);
+  assert.deepEqual(r[`s:${S}`], { kind: 'session', session_id: S, project_id: null, state: 'WORKING', since: T0 + 7123,
+    tool: 'Bash', tools: 2, events: 5, first: T0 + 123 });
+  assert.deepEqual(r[`a:${S}:hooks:a1`], { kind: 'agent', session_id: S, agent_id: 'a1', agent_types: ['Explore'], state: 'WORKING', since: T0 + 5123,
+    tool: null, tools: 1, events: 3, first: T0 + 3123, evidence: 'INFERRED', parent: `s:${S}` });
+  assert.equal(r[`a:${S}:hooks:a2`].evidence, 'UNKNOWN');
+  assert.equal(r[`a:${S}:hooks:a2`].parent, null);
+  assert.equal(r[`a:${S}:hooks:a2`].state, 'ENDED');
+  assert.ok(!JSON.stringify(r).includes('byte_offset'));
+  assert.equal(rowsAt([E('Notification', 0)], 1)[`s:${S}`].since, null);
 });
 
 test('diff + applyDelta: solo lo que cambia y el resultado es el estado nuevo', () => {
-  const a = toRows(p('WORKING', '2026-11-02T10:00:00.0000000+00:00'));
-  const b = toRows(p('WORKING', '2026-11-02T10:00:00.0000000+00:00', 'ENDED'));
+  const a = rowsAt(EVENTS, 31);
+  const b = rowsAt([...EVENTS, E('SubagentStop', 32, { agent_id: 'a1' })], 33);
   assert.deepEqual(diff(a, a), { upsert: [], remove: [] });
   const d = diff(a, b);
   assert.deepEqual(d.upsert.map(([k]) => k), [`a:${S}:hooks:a1`]);
   assert.deepEqual(applyDelta(a, d), b);
   const gone = diff(b, {});
-  assert.equal(gone.remove.length, 2);
+  assert.equal(gone.remove.length, 3);
   assert.deepEqual(applyDelta(b, gone), {});
 });
 
