@@ -5,6 +5,7 @@ hooks-events.jsonl
 *.db-shm
 .vscode/
 node_modules/
+app/dist/
 
 # Claude
 CLAUDE.md
