@@ -280,4 +280,39 @@ const model2 = buildModel(rows);    // constructor puro: sin SQLite, sin hora, s
 - Una reanudación registrada en otra fuente no se enlaza con la sesión original más allá de compartir `session_id`.
 - El cruce lanzador/hijo es cuadrático por partición.
 - `NEGATIVE_INTERVAL` marca cualquier orden Stop-antes-que-Start sin emparejar, por lo que un reinicio legítimo del mismo `agent_id` también se señala.
-- No hay API HTTP, WebSocket, interfaz ni persistencia del modelo; el modelo se recalcula en cada llamada.
+- No hay API HTTP, WebSocket, interfaz ni persistencia del modelo; el modelo se recalcula en cada cambio (ver Fase 3).
+
+# Fase 3: servicio, `presence` y diagnóstico
+
+## `src/presence.js`
+
+`presence(model, nowMs, ttl = TTL_MS)` → `{ sessions: [{ session_id, project_id, state, since }], agents: [{ session_id, source_id, agent_id, agent_types, state, since }] }`. Función pura sobre el modelo de H2-B; `since` es el timestamp del evento que decide el estado (o `null`).
+
+El estado sale del último evento significativo de cada actor (MAIN junto con `SessionStart`/`SessionEnd` de la sesión; cada agente con sus propios eventos). `Notification` se ignora.
+
+| Último evento | Estado | Caduca a `STALE` tras |
+|---|---|---|
+| `SessionEnd` (sesión), `SubagentStop` (agente) | `ENDED` | nunca |
+| `PermissionRequest` | `PERMISSION` | 10 min |
+| `SessionStart`, `Stop`, `StopFailure`, ninguno | `IDLE` | 24 h |
+| Cualquier otro (`UserPromptSubmit`, herramientas, `SubagentStart`…) | `WORKING` | 30 min |
+
+- Un agente de una sesión `ENDED` también queda `ENDED`. El `Stop` del padre no afecta a sus agentes (llega antes que sus `SubagentStop`).
+- Las caducidades (`TTL_MS`) están aprobadas, pero no calibradas con uso real. Un permiso rechazado y uno todavía pendiente son indistinguibles: ambos pasan a `STALE`.
+
+## `src/service.js`
+
+`startService({ dbPath, sourceId, path, onModel, onError, pollMs = 500, retentionDays = 30 })` → `{ stop() }`.
+
+- Activa WAL. Vigila `path` con `fs.watch` y además sondea cada `pollMs` (cubre un archivo aún sin crear o un vigilante caído).
+- Llama a `onModel(loadModel(db))` al arrancar y cada vez que la ingesta o la retención cambian algo. `onError(code)` recibe solo códigos fijos (`IngestError` o `SERVICE_FAILED`), una vez por cambio de código; el servicio sigue sondeando.
+- Retención `prune(db, nowMs, days)`: al arrancar y cada hora borra las **sesiones completas** cuyo último evento es anterior al corte. Los rechazos se conservan. `RETENTION_DAYS = 30` (aprobado).
+- Medido en los tests: 1–4 ms entre añadir la línea y recibir el modelo. Con el hook real: ≤ ~10 ms (21 eventos).
+
+## `src/cli.js` (diagnóstico)
+
+```powershell
+node src/cli.js --db <ruta.db> [--source <ruta.jsonl> [--watch]]
+```
+
+Imprime en JSON solo recuentos: eventos, rechazos por código, sesiones, agentes, anomalías y estados de `presence`. Con `--source` ingiere antes (`sourceId` = `hooks`); con `--watch` arranca el servicio (que **aplica la retención**) e imprime una línea por cambio. Los errores salen como código fijo.
