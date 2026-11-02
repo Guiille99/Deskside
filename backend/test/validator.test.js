@@ -58,7 +58,7 @@ test('líneas en blanco según Char.IsWhiteSpace de .NET', () => {
 });
 
 test('la lista blanca coincide con la sección 2 del protocolo', () => {
-  assert.deepEqual(COMMON, ['timestamp', 'event', 'session_id', 'agent_id', 'agent_type', 'permission_mode']);
+  assert.deepEqual(COMMON, ['timestamp', 'event', 'session_id', 'project_id', 'agent_id', 'agent_type', 'permission_mode']);
   assert.deepEqual(Object.keys(EXTRA).sort(), ['Notification', 'PermissionRequest', 'PostToolUse', 'PostToolUseFailure', 'PreToolUse',
     'SessionEnd', 'SessionStart', 'Stop', 'StopFailure', 'SubagentStart', 'SubagentStop', 'UserPromptSubmit']);
 });

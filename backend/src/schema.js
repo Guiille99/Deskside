@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS event (
   timestamp              TEXT NOT NULL,
   event                  TEXT NOT NULL,
   session_id             TEXT NOT NULL,
+  project_id             TEXT,
   agent_id               TEXT,
   agent_type             TEXT,
   permission_mode        TEXT,

@@ -48,7 +48,7 @@ test('esquema exacto: tres tablas STRICT y columnas de la lista blanca', (t) => 
   const tables = db.prepare("SELECT name, strict FROM pragma_table_list WHERE schema = 'main' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
   assert.deepEqual(tables.map((r) => [r.name, r.strict]), [['event', 1], ['ingest_cursor', 1], ['ingest_reject', 1]]);
   const cols = (tb) => db.prepare(`SELECT name, type, "notnull" AS nn FROM pragma_table_info('${tb}')`).all().map((c) => [c.name, c.type, c.nn]);
-  const expectedEvent = ['source_id', 'byte_offset', 'timestamp', 'event', 'session_id', 'agent_id', 'agent_type', 'permission_mode',
+  const expectedEvent = ['source_id', 'byte_offset', 'timestamp', 'event', 'session_id', 'project_id', 'agent_id', 'agent_type', 'permission_mode',
     'source', 'model', 'reason', 'stop_hook_active', 'background_tasks_count', 'session_crons_count', 'error', 'notification_type',
     'tool_name', 'tool_use_id', 'duration_ms', 'is_interrupt'];
   assert.deepEqual(cols('event').map((c) => c[0]), expectedEvent);

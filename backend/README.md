@@ -63,7 +63,7 @@ ingest_reject (source_id TEXT NOT NULL, byte_offset INTEGER NOT NULL, code TEXT 
                UNIQUE (source_id, byte_offset))
 event (source_id, byte_offset,            -- procedencia
        timestamp, event, session_id,      -- NOT NULL
-       agent_id, agent_type, permission_mode, source, model, reason,
+       project_id, agent_id, agent_type, permission_mode, source, model, reason,
        stop_hook_active, background_tasks_count, session_crons_count, error,
        notification_type, tool_name, tool_use_id, duration_ms, is_interrupt,
        UNIQUE (source_id, byte_offset))
@@ -251,7 +251,7 @@ const model2 = buildModel(rows);    // constructor puro: sin SQLite, sin hora, s
 
 ## Anomalías
 
-`SOLO_START`, `SOLO_STOP`, `REPEATED`, `NEGATIVE_INTERVAL`, `CONTEXT_CONFLICT` (C4), `ATTR_CONFLICT` (`agent_type` en un agente, `tool_name` en una invocación) y `SOURCE_COLLISION`. Se aplican a agentes (`SubagentStart`/`SubagentStop`) y a invocaciones (`PreToolUse` frente a `PostToolUse`/`PostToolUseFailure`). Cada anomalía lleva las referencias `{source_id, byte_offset, event, timestamp}` de todas sus evidencias. Los eventos sin `tool_use_id` no se emparejan y no son anomalía. La ausencia de `SessionStart`/`SessionEnd` se ve como lista vacía, sin anomalía. Un intervalo negativo no produce duración.
+`SOLO_START`, `SOLO_STOP`, `REPEATED`, `NEGATIVE_INTERVAL`, `CONTEXT_CONFLICT` (C4), `ATTR_CONFLICT` (`agent_type` en un agente, `tool_name` en una invocación, `project_id` en una sesión) y `SOURCE_COLLISION`. Se aplican a agentes (`SubagentStart`/`SubagentStop`) y a invocaciones (`PreToolUse` frente a `PostToolUse`/`PostToolUseFailure`). Cada anomalía lleva las referencias `{source_id, byte_offset, event, timestamp}` de todas sus evidencias. Los eventos sin `tool_use_id` no se emparejan y no son anomalía. La ausencia de `SessionStart`/`SessionEnd` se ve como lista vacía, sin anomalía. Un intervalo negativo no produce duración.
 
 - `NEGATIVE_INTERVAL`: existe algún Stop (o cierre) anterior a algún Start (o `Pre`) de la misma entidad y partición, comparado en ticks exactos de 100 ns. Timestamps iguales no son negativos. La anomalía lleva todos los eventos de la entidad. No se empareja nada, así que una secuencia Start, Stop, Start, Stop también se marca (no se puede distinguir un reinicio de un Stop anómalo). La duración solo existe con un Start y un Stop no negativos.
 - `REPEATED` tiene tres ámbitos: `event` (duplicado exacto: mismo contenido salvo `source_id` y `byte_offset`, en la misma partición; no se elimina ninguno), `agent` e `invocation` (varios Start/Stop o varios Pre/cierres). Si el REPEATED de agente o de invocación solo repite ese mismo evento duplicado, no se emite aparte: queda anotado en `detail.entities` del REPEATED de evento. Con eventos distintos se emite además el suyo. Dos eventos iguales en otro instante no son duplicados.
@@ -263,7 +263,7 @@ const model2 = buildModel(rows);    // constructor puro: sin SQLite, sin hora, s
 ## Forma de la salida (resumida)
 
 ```js
-{ sessions: [{ session_id, sources, collision, starts, ends, mains: [{ source_id, evidence: 'INFERRED', events }] }],
+{ sessions: [{ session_id, project_id, sources, collision, starts, ends, mains: [{ source_id, evidence: 'INFERRED', events }] }],
   agents: [{ session_id, source_id, agent_id, evidence: 'OBSERVED', agent_types, starts, stops, events, duration_ms }],
   invocations: [{ session_id, source_id, tool_use_id, tool_names, pre, closes, contexts, conflict }],
   relations: [{ kind: 'PARENT_CHILD', evidence: 'INFERRED', parent: { kind: 'MAIN', evidence: 'INFERRED' },

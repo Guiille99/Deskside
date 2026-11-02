@@ -6,7 +6,7 @@ export const FORBIDDEN = ['prompt', 'last_assistant_message', 'tool_input', 'too
   'transcript_path', 'agent_transcript_path', 'scratchpad_dir', 'error_details', 'cwd', 'session_title',
   'permission_suggestions', 'mcp_server', 'background_tasks', 'session_crons', 'custom_instructions', 'compact_summary'];
 
-export const COMMON = ['timestamp', 'event', 'session_id', 'agent_id', 'agent_type', 'permission_mode'];
+export const COMMON = ['timestamp', 'event', 'session_id', 'project_id', 'agent_id', 'agent_type', 'permission_mode'];
 
 export const EXTRA = {
   SessionStart: ['source', 'model'], SessionEnd: ['reason'], UserPromptSubmit: [],
@@ -45,12 +45,13 @@ const ENUMS = {
 export const RE = {
   ts: /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}\+00:00$/,
   sid: /^[A-Za-z0-9-]{8,64}$/,
+  pid: /^[0-9a-f]{32}$/,
   id: /^[A-Za-z0-9_-]{1,64}$/,
   model: /^(claude-[a-z0-9-]{1,40}(\[1m\])?|other)$/,
 };
 
 const RULES = {
-  timestamp: 'ts', event: 'enum', session_id: 'sid', agent_id: 'id', agent_type: 'enum', permission_mode: 'enum',
+  timestamp: 'ts', event: 'enum', session_id: 'sid', project_id: 'pid', agent_id: 'id', agent_type: 'enum', permission_mode: 'enum',
   source: 'enum', model: 'model', reason: 'enum', stop_hook_active: 'bool', background_tasks_count: 1000,
   session_crons_count: 1000, error: 'enum', notification_type: 'enum', tool_name: 'enum', tool_use_id: 'id',
   duration_ms: 86400000, is_interrupt: 'bool',

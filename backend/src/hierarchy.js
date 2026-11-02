@@ -52,8 +52,10 @@ export function buildModel(events) {
   for (const [sid, list] of bySession) {
     const sources = sorted(new Set(list.map((it) => it.e.source_id)));
     const collision = sources.length > 1;
+    // Proyecto → sesión: valor único o null (ausente en eventos sin project_id, o en conflicto).
+    const projects = sorted(new Set(list.map((it) => it.e.project_id).filter((p) => p != null)));
     const session = {
-      session_id: sid, sources, collision,
+      session_id: sid, project_id: projects.length === 1 ? projects[0] : null, sources, collision,
       starts: list.filter((it) => it.e.event === 'SessionStart').map((it) => ({ ...it.ref, source: it.e.source ?? null })),
       ends: list.filter((it) => it.e.event === 'SessionEnd').map((it) => ({ ...it.ref, reason: it.e.reason ?? null })),
       mains: [],
@@ -62,6 +64,10 @@ export function buildModel(events) {
     if (collision) {
       anomaly('SOURCE_COLLISION', 'session', { session_id: sid, source_id: null },
         sources.map((s) => list.find((it) => it.e.source_id === s).ref), { sources });
+    }
+    if (projects.length > 1) {
+      anomaly('ATTR_CONFLICT', 'session', { session_id: sid, source_id: null },
+        projects.map((p) => list.find((it) => it.e.project_id === p).ref), { attribute: 'project_id', values: projects });
     }
     // Con colisión, cada fuente es una partición aislada: ninguna regla lee eventos de otra fuente.
     const parts = collision ? [...group(list, (it) => it.e.source_id)].sort((a, b) => lt(a[0], b[0])) : [[sources[0], list]];

@@ -570,3 +570,18 @@ test('X. un lanzador con contexto UNKNOWN y agent_id igual al hijo no se excluye
   assert.equal(p.evidence, 'UNKNOWN');
   assert.ok(p.causes.includes('LAUNCHER_CONTEXT_UNKNOWN'));
 });
+
+test('Y. proyecto → sesión: project_id único o null, y ATTR_CONFLICT de sesión si hay varios', () => {
+  const P1 = 'a'.repeat(32);
+  const P2 = 'b'.repeat(32);
+  const one = buildModel([E('UserPromptSubmit', 0, { project_id: P1 }), E('Stop', 1, { project_id: P1 })]);
+  assert.equal(one.sessions[0].project_id, P1);
+  assert.deepEqual(one.anomalies, []);
+  assert.equal(buildModel([E('Stop', 0)]).sessions[0].project_id, null);
+  const two = buildModel([E('UserPromptSubmit', 0, { project_id: P1 }), E('Stop', 1, { project_id: P2 })]);
+  assert.equal(two.sessions[0].project_id, null);
+  const a = two.anomalies.find((x) => x.code === 'ATTR_CONFLICT');
+  assert.equal(a.scope, 'session');
+  assert.deepEqual(a.detail, { attribute: 'project_id', values: [P1, P2] });
+  assert.equal(a.refs.length, 2);
+});
