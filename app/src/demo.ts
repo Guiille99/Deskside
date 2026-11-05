@@ -56,6 +56,8 @@ export function installDemo() {
     snapshot: async () => ({ rows: { ...rows }, status: 'DEMO' }),
     projects: async () => PROJECTS,
     setPolicy: async () => [],
+    hook: async () => ({ status: 'absent', error: null, events: ['Stop'], entry: '{}' }),
+    hookApply: async () => ({ status: 'installed', error: null, events: ['Stop'], entry: '{}' }),
     onDelta: (cb) => { cbs.push(cb); },
     onStatus: () => {},
     onProjects: () => {},

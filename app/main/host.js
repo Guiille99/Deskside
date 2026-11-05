@@ -17,7 +17,8 @@ const push = () => {
 };
 
 startService({
-  dbPath: process.env.CO_DB, sourceId: 'hooks', path: process.env.CO_SOURCE,
+  // sourceId 'global': 'hooks' era el registro de claude-office-test (otro archivo, otro cursor).
+  dbPath: process.env.CO_DB, sourceId: 'global', path: process.env.CO_SOURCE,
   // shortcut: el error solo se limpia cuando llega un modelo nuevo; si se recupera sin eventos nuevos, el aviso sigue hasta el siguiente.
   onModel: (m) => { model = m; post({ type: 'status', code: null }); push(); },
   onError: (code) => post({ type: 'status', code }),

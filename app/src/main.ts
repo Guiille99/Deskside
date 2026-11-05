@@ -1,5 +1,5 @@
 // Fase 5: oficina en Phaser + panel de proyectos. Todo el texto del DOM entra con textContent (el nombre de carpeta no es de confianza).
-import type { Delta, Project, Row } from './types.ts';
+import type { Delta, Hook, Project, Row } from './types.ts';
 import { createOffice } from './office.ts';
 
 declare global {
@@ -8,6 +8,8 @@ declare global {
       snapshot(): Promise<{ rows: Record<string, Row>; status: string | null }>;
       projects(): Promise<Project[]>;
       setPolicy(id: string, status: 'enabled' | 'excluded'): Promise<Project[]>;
+      hook(): Promise<Hook>;
+      hookApply(action: 'install' | 'uninstall'): Promise<Hook>;
       onDelta(cb: (d: Delta) => void): void;
       onStatus(cb: (code: string | null) => void): void;
       onProjects(cb: (p: Project[]) => void): void;
@@ -121,6 +123,23 @@ function setProjects(p: Project[]) {
   refresh(); // el desplegable lleva los nombres de los proyectos
 }
 
+// Fase 7: el cambio que se va a hacer en settings.json se enseña antes de pulsar.
+const HOOK: Record<Hook['status'], string> = { installed: 'Instalado', partial: 'Incompleto', absent: 'No instalado', invalid: 'settings.json no válido' };
+function renderHook(h: Hook) {
+  const btn = (action: 'install' | 'uninstall', text: string) => {
+    const b = el('button', 'mr-2 rounded border border-slate-600 px-2 py-0.5 text-xs hover:bg-slate-800', text) as HTMLButtonElement;
+    b.onclick = async () => { renderHook(await window.office.hookApply(action)); };
+    return b;
+  };
+  const acts = el('p', 'my-2');
+  if (h.status === 'absent' || h.status === 'partial') acts.append(btn('install', h.status === 'partial' ? 'Reparar' : 'Instalar'));
+  if (h.status === 'installed' || h.status === 'partial') acts.append(btn('uninstall', 'Desinstalar'));
+  const details = el('details', 'text-xs text-slate-400');
+  details.append(el('summary', 'cursor-pointer', `Cambio en ~/.claude/settings.json: esta entrada en ${h.events.length} eventos (${h.events.join(', ')}). Antes se guarda una copia .bak; desinstalar solo quita estas entradas.`),
+    el('pre', 'mt-1 overflow-x-auto rounded bg-slate-900 p-2', h.entry));
+  $('hook').replaceChildren(el('p', '', `Estado: ${HOOK[h.status]}${h.error ? ` (${h.error})` : ''}`), acts, details);
+}
+
 function setStatus(code: string | null) {
   const s = $('status');
   s.textContent = code ?? 'En directo';
@@ -136,7 +155,8 @@ window.office.onDelta((d) => {
 window.office.onStatus(setStatus);
 window.office.onProjects(setProjects);
 
-const [snap, proj] = await Promise.all([window.office.snapshot(), window.office.projects()]);
+const [snap, proj, hook] = await Promise.all([window.office.snapshot(), window.office.projects(), window.office.hook()]);
+renderHook(hook);
 rows = snap.rows;
 setStatus(snap.status);
 setProjects(proj);

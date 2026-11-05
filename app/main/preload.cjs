@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('office', {
   snapshot: () => ipcRenderer.invoke('snapshot'),
   projects: () => ipcRenderer.invoke('projects'),
   setPolicy: (id, status) => ipcRenderer.invoke('set-policy', id, status),
+  hook: () => ipcRenderer.invoke('hook'),
+  hookApply: (action) => ipcRenderer.invoke('hook-apply', action),
   onDelta: on('delta'),
   onStatus: on('status'),
   onProjects: on('projects'),

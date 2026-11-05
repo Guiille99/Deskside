@@ -1,15 +1,18 @@
 // Fase 4: proceso principal. Arranca el servicio en un utilityProcess, guarda el último estado (snapshot)
 // y reenvía los deltas al renderer por IPC. Sin puerto local ni contenido remoto.
 import { app, BrowserWindow, ipcMain, session, utilityProcess } from 'electron';
-import { mkdirSync, watch } from 'node:fs';
+import { appendFileSync, mkdirSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { applyDelta } from './rows.js';
 import { listProjects, setPolicy } from './policy.js';
+import { EVENTS, apply, entry, errorCode, hookStatus } from './install.js';
 
 const here = import.meta.dirname;
 const POLICY_DIR = join(app.getPath('appData'), 'ClaudeOffice');
-// shortcut: ruta fija del hook de claude-office-test (la misma que capture-event.ps1); la Fase 7 (hooks globales) la sustituye.
-const SOURCE = join(app.getPath('home'), 'Proyectos', 'Claude Office', 'claude-office-test', 'hooks-events.jsonl');
+// Fase 7: el hook global (app/hook, copiado a HOOK) escribe aquí.
+const SOURCE = join(POLICY_DIR, 'hooks-events.jsonl');
+const HOOK = join(POLICY_DIR, 'hook', 'capture-event.ps1');
+const SETTINGS = join(process.env.CLAUDE_CONFIG_DIR ?? join(app.getPath('home'), '.claude'), 'settings.json');
 
 let win = null;
 let rows = {};
@@ -49,6 +52,17 @@ else {
 
   ipcMain.handle('snapshot', (e) => (fromWin(e) ? { rows, status } : null));
   ipcMain.handle('projects', (e) => (fromWin(e) ? listProjects(POLICY_DIR) : []));
+  // Al renderer solo llegan el estado, la entrada que se añade y códigos fijos; nunca el resto de settings.json.
+  const hookInfo = (error = null) => {
+    let status;
+    try { status = hookStatus(SETTINGS, HOOK); } catch (e) { status = 'invalid'; error ??= errorCode(e); }
+    return { status, error, events: EVENTS, entry: JSON.stringify(entry(HOOK), null, 2) };
+  };
+  ipcMain.handle('hook', (e) => (fromWin(e) ? hookInfo() : null));
+  ipcMain.handle('hook-apply', (e, action) => {
+    if (!fromWin(e) || (action !== 'install' && action !== 'uninstall')) return null;
+    try { apply(SETTINGS, HOOK, action, join(here, '..', 'hook', 'capture-event.ps1')); return hookInfo(); } catch (err) { return hookInfo(errorCode(err)); }
+  });
   ipcMain.handle('set-policy', (e, id, st) => {
     if (!fromWin(e)) return [];
     setPolicy(POLICY_DIR, id, st); // lanza INVALID_POLICY / UNKNOWN_PROJECT
@@ -58,6 +72,7 @@ else {
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, _p, cb) => cb(false));
     mkdirSync(POLICY_DIR, { recursive: true });
+    appendFileSync(SOURCE, ''); // la ingesta da SOURCE_UNREADABLE si el hook aún no ha escrito nada
     let t = null; // los pendientes nuevos los crea el hook: se avisa al renderer sin sondear
     watch(POLICY_DIR, { recursive: true }, () => {
       clearTimeout(t);

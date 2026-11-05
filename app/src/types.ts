@@ -6,3 +6,4 @@ export type Agent = Common & { kind: 'agent'; agent_id: string; agent_types: str
 export type Row = Session | Agent;
 export type Delta = { upsert: [string, Row][]; remove: string[] };
 export type Project = { project_id: string; name: string | null; status: 'enabled' | 'excluded' | 'pending' };
+export type Hook = { status: 'installed' | 'partial' | 'absent' | 'invalid'; error: string | null; events: string[]; entry: string };
