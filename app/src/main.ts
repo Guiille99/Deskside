@@ -36,6 +36,54 @@ const projectName = (id: string | null) => (id === null ? '—' : projects.find(
 const sessionName = (sid: string) => { const r = rows[`s:${sid}`]; return r?.kind === 'session' ? projectName(r.project_id) : '—'; };
 const office = createOffice($('scene'), $('hud'), sessionName);
 
+// Una oficina por proyecto. Las sesiones sin project_id (conflicto o datos de antes de la Fase 2) van a «Sin proyecto».
+const NONE = '';
+const KEY = 'claude-office.project';
+let selected: string | null = null;
+const projectOf = (r: Row) => { const s = rows[`s:${r.session_id}`]; return (s?.kind === 'session' ? s.project_id : null) ?? NONE; };
+const view = () => (selected === null ? {} : Object.fromEntries(Object.entries(rows).filter(([, r]) => projectOf(r) === selected)));
+
+// Proyectos activados más los que tengan filas; primero los que tienen gente activa.
+function options() {
+  const m = new Map<string, { live: number; last: number }>();
+  for (const p of projects) if (p.status === 'enabled') m.set(p.project_id, { live: 0, last: 0 });
+  for (const r of Object.values(rows)) {
+    const id = projectOf(r), o = m.get(id) ?? { live: 0, last: 0 };
+    if (r.state !== 'ENDED') o.live++;
+    o.last = Math.max(o.last, r.since ?? r.first ?? 0);
+    m.set(id, o);
+  }
+  return [...m].map(([id, o]) => ({ id, name: id === NONE ? 'Sin proyecto' : projectName(id), ...o }))
+    .sort((a, b) => Number(b.live > 0) - Number(a.live > 0) || a.name.localeCompare(b.name));
+}
+
+function refresh() {
+  const opts = options(), has = (id: string | null) => opts.some((o) => o.id === id);
+  let next = selected;
+  if (!has(next)) {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(KEY); } catch { /* sin almacenamiento: se usa el más reciente */ }
+    next = has(saved) ? saved : opts.reduce<(typeof opts)[0] | null>((b, o) => (!b || o.last > b.last ? o : b), null)?.id ?? null;
+  }
+  const sel = $('project') as HTMLSelectElement;
+  const text = (o: (typeof opts)[0]) => (o.live ? `${o.name} · ${o.live} activos` : o.name);
+  // Si la lista no cambia solo se actualizan los textos, para no cerrar el desplegable si está abierto.
+  if ([...sel.options].map((o) => o.value).join('\n') === opts.map((o) => o.id).join('\n')) opts.forEach((o, i) => { sel.options[i].textContent = text(o); });
+  else sel.replaceChildren(...opts.map((o) => { const e = el('option', '', text(o)) as HTMLOptionElement; e.value = o.id; return e; }));
+  if (!opts.length) sel.replaceChildren(el('option', '', 'Sin proyectos'));
+  sel.disabled = !opts.length;
+  if (next !== null) sel.value = next;
+  const reset = next !== selected;
+  selected = next;
+  office.setRows(view(), reset);
+}
+
+($('project') as HTMLSelectElement).onchange = (e) => {
+  selected = (e.target as HTMLSelectElement).value;
+  try { localStorage.setItem(KEY, selected); } catch { /* preferencia visual: si falla no pasa nada */ }
+  office.setRows(view(), true);
+};
+
 function table(head: string[], body: (string | HTMLElement)[][], empty: string): HTMLElement {
   if (!body.length) return el('p', 'text-slate-500', empty);
   const t = el('table', 'w-full text-left');
@@ -70,7 +118,7 @@ function renderProjects() {
 function setProjects(p: Project[]) {
   projects = p;
   renderProjects();
-  office.setRows(rows); // los rótulos de las islas llevan el nombre del proyecto
+  refresh(); // el desplegable lleva los nombres de los proyectos
 }
 
 function setStatus(code: string | null) {
@@ -83,7 +131,7 @@ function setStatus(code: string | null) {
 window.office.onDelta((d) => {
   rows = { ...rows, ...Object.fromEntries(d.upsert) };
   for (const k of d.remove) delete rows[k];
-  office.setRows(rows);
+  refresh();
 });
 window.office.onStatus(setStatus);
 window.office.onProjects(setProjects);

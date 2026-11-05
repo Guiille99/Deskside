@@ -2,15 +2,16 @@
 // Función pura: no lee SQLite, no usa la hora del sistema y no modifica el modelo.
 import { ticks } from './hierarchy.js';
 
-export const STATES = ['WORKING', 'PERMISSION', 'IDLE', 'ENDED', 'STALE']; // trabajando, esperando permiso, inactivo, terminado, caducado
+export const STATES = ['WORKING', 'PERMISSION', 'IDLE', 'ERROR', 'ENDED', 'STALE']; // trabajando, esperando permiso, inactivo, error, terminado, caducado
 
 // Caducidades aprobadas (2026-11-02), no calibradas con uso real (ms sin eventos del actor). Hallazgos de la Fase 1:
 // Esc no deja Stop (A2) y un permiso rechazado deja PreToolUse + PermissionRequest sin cierre.
-export const TTL_MS = { WORKING: 30 * 60000, PERMISSION: 10 * 60000, IDLE: 24 * 3600000 };
+// ERROR (turno cerrado con StopFailure) espera el siguiente prompt como IDLE: misma caducidad.
+export const TTL_MS = { WORKING: 30 * 60000, PERMISSION: 10 * 60000, IDLE: 24 * 3600000, ERROR: 24 * 3600000 };
 
 // Notification no decide el estado: llega tarde y no siempre tras PermissionRequest (hallazgo 4).
 const IGNORED = new Set(['Notification']);
-const STATE_OF = { SessionStart: 'IDLE', Stop: 'IDLE', StopFailure: 'IDLE', SessionEnd: 'ENDED', SubagentStop: 'ENDED', PermissionRequest: 'PERMISSION' };
+const STATE_OF = { SessionStart: 'IDLE', Stop: 'IDLE', StopFailure: 'ERROR', SessionEnd: 'ENDED', SubagentStop: 'ENDED', PermissionRequest: 'PERMISSION' };
 const order = (a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1
   : a.source_id < b.source_id ? -1 : a.source_id > b.source_id ? 1 : a.byte_offset - b.byte_offset);
 

@@ -92,3 +92,14 @@ test('11. función pura: no modifica el modelo y solo devuelve estados conocidos
   assert.ok([...p.sessions, ...p.agents].every((x) => STATES.includes(x.state)));
   assert.equal(p.sessions[0].project_id, null);
 });
+
+test('12. StopFailure: error hasta el siguiente evento significativo; caduca como inactivo', () => {
+  const rows = [E('UserPromptSubmit', 0), E('StopFailure', 5, { error: 'rate_limit' })];
+  assert.deepEqual([main(rows, 6).state, main(rows, 6).since], ['ERROR', ts(5)]);
+  assert.equal(main([...rows, E('Notification', 7, { notification_type: 'idle_prompt' })], 8).state, 'ERROR'); // Notification no lo borra
+  assert.equal(main([...rows, E('UserPromptSubmit', 9)], 10).state, 'WORKING'); // nuevo turno
+  assert.equal(main([...rows, E('Stop', 9)], 10).state, 'IDLE');
+  assert.equal(main([...rows, E('SessionEnd', 9, { reason: 'other' })], 10).state, 'ENDED');
+  assert.equal(main(rows, 5 + TTL_MS.ERROR / 1000).state, 'ERROR');
+  assert.equal(main(rows, 5 + TTL_MS.ERROR / 1000 + 1).state, 'STALE');
+});

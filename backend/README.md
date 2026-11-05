@@ -294,7 +294,8 @@ El estado sale del último evento significativo de cada actor (MAIN junto con `S
 |---|---|---|
 | `SessionEnd` (sesión), `SubagentStop` (agente) | `ENDED` | nunca |
 | `PermissionRequest` | `PERMISSION` | 10 min |
-| `SessionStart`, `Stop`, `StopFailure`, ninguno | `IDLE` | 24 h |
+| `StopFailure` (turno cerrado con error, p. ej. de la API) | `ERROR` | 24 h |
+| `SessionStart`, `Stop`, ninguno | `IDLE` | 24 h |
 | Cualquier otro (`UserPromptSubmit`, herramientas, `SubagentStart`…) | `WORKING` | 30 min |
 
 - Un agente de una sesión `ENDED` también queda `ENDED`. El `Stop` del padre no afecta a sus agentes (llega antes que sus `SubagentStop`).

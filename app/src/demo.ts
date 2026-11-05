@@ -1,10 +1,12 @@
 // Fase 5: datos sintéticos para probar la escena fuera de Electron (vite preview), donde no existe window.office.
-// 20 sesiones × 10 agentes; cada segundo cambian estados y herramientas, y algunos agentes terminan y llegan otros.
-import type { Delta, Row, State } from './types.ts';
+// 20 sesiones × 10 agentes en tres proyectos; cada segundo cambian estados y herramientas, y algunos agentes terminan y llegan otros.
+import type { Delta, Project, Row, State } from './types.ts';
 
 const SESSIONS = 20, AGENTS = 10;
-const STATES: State[] = ['WORKING', 'WORKING', 'WORKING', 'PERMISSION', 'IDLE', 'STALE'];
+const STATES: State[] = ['WORKING', 'WORKING', 'WORKING', 'PERMISSION', 'IDLE', 'ERROR', 'STALE'];
 const TOOLS = ['Read', 'Edit', 'Bash', 'WebFetch', 'Agent', 'mcp__demo__x', 'Otra', null];
+// Tres proyectos activados; una de cada cuatro sesiones va sin proyecto.
+const PROJECTS: Project[] = ['tienda-web', 'api-pagos', 'docs'].map((name, i) => ({ project_id: `demo${i}`.padEnd(32, '0'), name, status: 'enabled' }));
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 
 export function installDemo() {
@@ -24,7 +26,7 @@ export function installDemo() {
   };
   for (let s = 0; s < SESSIONS; s++) {
     const sid = `demo${String(s).padStart(4, '0')}-0000`;
-    rows[`s:${sid}`] = { kind: 'session', session_id: sid, project_id: null, state: 'WORKING', since: t0, first: t0 + s, tool: 'Bash', tools: 3, events: 10 };
+    rows[`s:${sid}`] = { kind: 'session', session_id: sid, project_id: s % 4 === 3 ? null : PROJECTS[s % 4].project_id, state: 'WORKING', since: t0, first: t0 + s, tool: 'Bash', tools: 3, events: 10 };
     live.set(sid, []);
     for (let a = 0; a < AGENTS; a++) agent(sid);
   }
@@ -52,7 +54,7 @@ export function installDemo() {
 
   window.office = {
     snapshot: async () => ({ rows: { ...rows }, status: 'DEMO' }),
-    projects: async () => [],
+    projects: async () => PROJECTS,
     setPolicy: async () => [],
     onDelta: (cb) => { cbs.push(cb); },
     onStatus: () => {},
