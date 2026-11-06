@@ -1,7 +1,7 @@
 // Fase 7: instalador del hook global (settings.json sintéticos en %TEMP%) y el hook de app/hook con un APPDATA aislado.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -9,7 +9,9 @@ import { EVENTS, apply, entry, plan, hookStatus, errorCode } from '../main/insta
 import { validateLine } from '../../backend/src/validator.js';
 
 const HOOK_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.ps1');
-const tmp = (t) => { const d = mkdtempSync(join(tmpdir(), 'co-h1-install-')); t.after(() => rmSync(d, { recursive: true, force: true })); return d; };
+// realpathSync.native: PowerShell (.NET Framework) expande los nombres cortos 8.3 de Windows (p. ej. RUNNER~1) y Node no;
+// con la ruta ya expandida, el hook .ps1 y el .mjs calculan el mismo project_id.
+const tmp = (t) => { const d = mkdtempSync(join(realpathSync.native(tmpdir()), 'co-h1-install-')); t.after(() => rmSync(d, { recursive: true, force: true })); return d; };
 const paths = (d) => ({ settings: join(d, '.claude', 'settings.json'), hook: join(d, 'ClaudeOffice', 'hook', 'capture-event.ps1') });
 const baks = (d) => readdirSync(join(d, '.claude')).filter((f) => f.endsWith('.bak'));
 const json = (p) => JSON.parse(readFileSync(p, 'utf8'));
