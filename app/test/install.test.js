@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, readFileSync, read
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { EVENTS, POWERSHELL, apply, entry, plan, hookStatus, errorCode } from '../main/install.js';
+import { EVENTS, POWERSHELL, apply, entry, plan, hookStatus, errorCode, removeAll } from '../main/install.js';
 import { validateLine } from '../../backend/src/validator.js';
 
 const HOOK_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.ps1');
@@ -36,10 +36,9 @@ test('idempotente, con copia .bak exacta, y desinstalar deja los ajustes del usu
   mkdirSync(join(d, '.claude'));
   const original = '\uFEFF' + JSON.stringify(USER);
   writeFileSync(settings, original);
-  const now = new Date(Date.UTC(2026, 10, 5, 12));
-  assert.equal(apply(settings, hook, 'install', HOOK_SRC, now), true);
-  assert.equal(apply(settings, hook, 'install', HOOK_SRC, now), false); // misma fecha: un segundo .bak fallaría con wx
-  assert.deepEqual(baks(d), ['settings.json.claude-office-2026-11-05T12-00-00-000Z.bak']);
+  assert.equal(apply(settings, hook, 'install', HOOK_SRC), true);
+  assert.equal(apply(settings, hook, 'install', HOOK_SRC), false);
+  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
   assert.equal(readFileSync(join(d, '.claude', baks(d)[0]), 'utf8'), original);
   const s = json(settings);
   assert.equal(s.hooks.Stop.length, 2);
@@ -47,8 +46,12 @@ test('idempotente, con copia .bak exacta, y desinstalar deja los ajustes del usu
 
   // Un hook del usuario dentro de un grupo nuestro se conserva al desinstalar.
   s.hooks.Stop[1].hooks.push({ type: 'command', command: 'otro.exe' });
-  writeFileSync(settings, JSON.stringify(s));
-  assert.equal(apply(settings, hook, 'uninstall', HOOK_SRC, new Date(now.getTime() + 1)), true);
+  const installed = JSON.stringify(s);
+  writeFileSync(settings, installed);
+  assert.equal(apply(settings, hook, 'uninstall', HOOK_SRC), true);
+  // Una sola copia, sobrescrita con el estado anterior al último cambio.
+  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
+  assert.equal(readFileSync(join(d, '.claude', baks(d)[0]), 'utf8'), installed);
   const u = json(settings);
   assert.deepEqual(u.hooks.Stop, [...USER.hooks.Stop, { hooks: [{ type: 'command', command: 'otro.exe' }] }]);
   u.hooks.Stop.pop();
@@ -64,7 +67,7 @@ test('falta un evento: estado partial; instalar lo completa', (t) => {
   delete s.hooks.Notification;
   writeFileSync(settings, JSON.stringify(s));
   assert.equal(hookStatus(settings, hook), 'partial');
-  apply(settings, hook, 'install', HOOK_SRC, new Date(1));
+  apply(settings, hook, 'install', HOOK_SRC);
   assert.equal(hookStatus(settings, hook), 'installed');
   assert.equal(plan(settings, hook, 'uninstall').after, '{}\n');
 });
@@ -80,6 +83,43 @@ test('settings.json inválido: SETTINGS_INVALID sin escribir nada', (t) => {
     assert.equal(existsSync(hook), false);
   }
   assert.equal(errorCode(new Error('EPERM C:\\ruta')), 'INSTALL_FAILED');
+});
+
+test('copias con fecha de versiones anteriores: se borran al escribir; los .bak ajenos se conservan', (t) => {
+  const d = tmp(t), { settings, hook } = paths(d);
+  mkdirSync(join(d, '.claude'));
+  writeFileSync(settings, JSON.stringify(USER));
+  const old = ['settings.json.claude-office-2026-11-05T12-00-00-000Z.bak', 'settings.json.claude-office-2026-11-06T08-30-15-123Z.bak'];
+  const foreign = ['settings.json.otro.bak', 'otro.json.claude-office-2026-11-05T12-00-00-000Z.bak', 'settings.json.claude-office-x.bak'];
+  for (const f of [...old, ...foreign]) writeFileSync(join(d, '.claude', f), 'ZZSECRETO7Q');
+  apply(settings, hook, 'install', HOOK_SRC);
+  assert.deepEqual(baks(d).sort(), ['settings.json.claude-office.bak', ...foreign].sort());
+});
+
+test('removeAll: quita las entradas, las copias propias y el hook instalado; conserva lo del usuario', (t) => {
+  const d = tmp(t), { settings, hook } = paths(d);
+  mkdirSync(join(d, '.claude'));
+  writeFileSync(settings, JSON.stringify(USER));
+  apply(settings, hook, 'install', HOOK_SRC);
+  writeFileSync(join(d, '.claude', 'settings.json.claude-office-2026-11-05T12-00-00-000Z.bak'), 'x');
+  writeFileSync(join(d, '.claude', 'settings.json.otro.bak'), 'x');
+  removeAll(settings, hook);
+  assert.deepEqual(json(settings), USER);
+  assert.deepEqual(baks(d), ['settings.json.otro.bak']);
+  assert.equal(existsSync(join(d, 'ClaudeOffice', 'hook')), false);
+  removeAll(settings, hook); // repetir no falla
+});
+
+test('removeAll con settings.json inválido: SETTINGS_INVALID sin borrar el hook ni las copias', (t) => {
+  const d = tmp(t), { settings, hook } = paths(d);
+  mkdirSync(join(d, '.claude'));
+  writeFileSync(settings, JSON.stringify(USER));
+  apply(settings, hook, 'install', HOOK_SRC);
+  writeFileSync(settings, '{');
+  assert.throws(() => removeAll(settings, hook), { message: 'SETTINGS_INVALID' });
+  assert.equal(readFileSync(settings, 'utf8'), '{');
+  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
+  assert.equal(existsSync(hook), true);
 });
 
 const hasPowerShell = spawnSync('powershell.exe', ['-NoProfile', '-Command', 'exit 0']).status === 0;

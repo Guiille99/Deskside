@@ -67,7 +67,21 @@ Si tienes el instalador `Claude Office Setup <versión>.exe`:
 3. Pulsa **Panel** y, en **Hook global**, pulsa **Instalar**. Así se añaden las entradas del hook a `settings.json` de Claude Code.
 4. Abre Claude Code en un proyecto. Ese proyecto aparece en **Proyectos** como pendiente: actívalo para que empiece a mostrarse.
 
-**Desinstalar:** en **Panel → Hook global** pulsa **Desinstalar** (quita solo las entradas del hook) y desinstala la aplicación desde la configuración de Windows. Los datos de `%APPDATA%\ClaudeOffice` no se borran automáticamente.
+**Desinstalar:** desinstala la aplicación desde la configuración de Windows. El desinstalador:
+
+- quita las entradas del hook de `settings.json`, su copia `settings.json.claude-office.bak` y el script instalado;
+- pregunta si quieres borrar también los datos (registro de eventos, proyectos, `install.key` y base de datos). En una desinstalación silenciosa (`/S`) se conservan;
+- si no puede quitar el hook (por ejemplo, porque `settings.json` no es JSON válido), avisa y no borra los datos.
+
+Al actualizar a una versión nueva no se toca nada de esto.
+
+Si solo quieres dejar de registrar actividad sin desinstalar la app, pulsa **Desinstalar** en **Panel → Hook global**.
+
+La app guarda una sola copia de seguridad de `settings.json` (`settings.json.claude-office.bak`) con el estado anterior al último cambio. Al escribir, borra las copias con fecha que dejaban las versiones anteriores.
+
+### macOS y Linux
+
+No hay desinstalador que quite el hook. Antes de borrar la aplicación, pulsa **Desinstalar** en **Panel → Hook global**. Si no, `settings.json` seguirá llamando al hook. Los datos están en `ClaudeOffice` y en la carpeta `userData` de la app, dentro del directorio de datos de aplicación del sistema.
 
 ### Generar el instalador (desarrollo)
 

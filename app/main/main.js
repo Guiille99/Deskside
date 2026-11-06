@@ -5,7 +5,7 @@ import { appendFileSync, chmodSync, mkdirSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { applyDelta } from './rows.js';
 import { listProjects, setPolicy } from './policy.js';
-import { EVENTS, apply, entry, errorCode, hookStatus } from './install.js';
+import { EVENTS, apply, entry, errorCode, hookStatus, removeAll } from './install.js';
 
 const here = import.meta.dirname;
 const POLICY_DIR = join(app.getPath('appData'), 'ClaudeOffice');
@@ -43,8 +43,12 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+// El desinstalador de Windows (build/installer.nsh) ejecuta la app con este argumento: quita el hook y sale, sin ventana.
+if (process.argv.includes('--uninstall-hook')) {
+  try { removeAll(SETTINGS, HOOK); app.exit(0); } catch { app.exit(1); }
+}
 // Una sola instancia: dos servicios ingiriendo el mismo JSONL en la misma BD no aportan nada.
-if (!app.requestSingleInstanceLock()) app.quit();
+else if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => win?.focus());
   app.on('web-contents-created', (_e, wc) => {

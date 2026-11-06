@@ -1,7 +1,7 @@
 // Añade o quita el hook global en ~/.claude/settings.json. Solo toca entradas propias: las que ejecutan `hook`
 // (la copia instalada en <appData>/ClaudeOffice/hook). Copia .bak antes de escribir, escritura atómica e idempotente.
-import { readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync, statSync, rmSync } from 'node:fs';
-import { dirname, win32 } from 'node:path';
+import { readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync, statSync, rmSync, readdirSync } from 'node:fs';
+import { basename, dirname, join, win32 } from 'node:path';
 
 // Los mismos eventos que la lista blanca del hook.
 export const EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'Stop', 'StopFailure', 'Notification', 'PermissionRequest',
@@ -59,19 +59,43 @@ export function hookStatus(settingsPath, hook) {
   return plan(settingsPath, hook, 'uninstall').changed ? 'partial' : 'absent';
 }
 
+// settings.json puede llevar secretos (env): una sola copia propia, que se sobrescribe.
+const backup = (settingsPath) => `${settingsPath}.claude-office.bak`;
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Borra las copias con fecha de versiones anteriores (y, con all, también la copia actual). Los .bak ajenos no se tocan.
+function cleanBackups(settingsPath, all) {
+  const old = new RegExp(`^${escape(basename(settingsPath))}\\.claude-office-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.bak$`);
+  let files = [];
+  try { files = readdirSync(dirname(settingsPath)); } catch { return; } // carpeta inexistente: nada que limpiar
+  for (const f of files) if (old.test(f)) rmSync(join(dirname(settingsPath), f), { force: true });
+  if (all) rmSync(backup(settingsPath), { force: true });
+}
+
 // Al instalar también se recopia el hook (actualiza la versión aunque settings.json ya esté bien).
-export function apply(settingsPath, hook, action, hookSrc, now = new Date()) {
+export function apply(settingsPath, hook, action, hookSrc) {
   const p = plan(settingsPath, hook, action); // SETTINGS_INVALID antes de tocar nada
   if (action === 'install') { mkdirSync(dirname(hook), { recursive: true }); copyFileSync(hookSrc, hook); }
   if (!p.changed) return false;
   mkdirSync(dirname(settingsPath), { recursive: true, mode: 0o700 });
-  // settings.json puede llevar secretos (env): en POSIX, el temporal y el .bak conservan el modo del original, o 0600 si no existe.
+  // En POSIX, el temporal y el .bak conservan el modo del original, o 0600 si no existe.
   // En Windows mode solo afecta al bit de solo lectura; los permisos salen de la ACL heredada de la carpeta.
   const mode = p.before === null ? 0o600 : statSync(settingsPath).mode & 0o777;
-  if (p.before !== null) writeFileSync(`${settingsPath}.claude-office-${now.toISOString().replace(/[:.]/g, '-')}.bak`, p.before, { flag: 'wx', mode });
+  // mode solo se aplica al crear: por eso se borran antes la copia y un temporal que sobrara de un fallo.
+  if (p.before !== null) { rmSync(backup(settingsPath), { force: true }); writeFileSync(backup(settingsPath), p.before, { mode }); }
   const tmp = `${settingsPath}.claude-office.tmp`;
-  rmSync(tmp, { force: true }); // mode solo se aplica al crear: un temporal que sobró de un fallo conservaría sus permisos
+  rmSync(tmp, { force: true });
   writeFileSync(tmp, p.after, { mode });
   renameSync(tmp, settingsPath);
+  cleanBackups(settingsPath, false);
   return true;
+}
+
+// Desinstalación de la aplicación: quita las entradas, las copias propias y el hook instalado.
+// Si settings.json no se puede leer o es inválido, lanza sin borrar nada: un script borrado con las entradas
+// aún presentes haría fallar el hook en cada evento de Claude Code.
+export function removeAll(settingsPath, hook) {
+  apply(settingsPath, hook, 'uninstall');
+  cleanBackups(settingsPath, true);
+  rmSync(dirname(hook), { recursive: true, force: true });
 }
