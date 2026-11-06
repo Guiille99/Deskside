@@ -97,7 +97,7 @@ Comportamiento con casos especiales:
 
 | Error | Cuándo |
 |---|---|
-| `SOURCE_REPLACED` | Cambia `dev:ino`: por ejemplo, el archivo se ha renombrado encima o, en NTFS, borrado y recreado. No detecta todas las sustituciones. |
+| `SOURCE_REPLACED` | Cambia `dev:ino`: por ejemplo, el archivo se ha renombrado encima o, en NTFS y APFS, borrado y recreado. No detecta todas las sustituciones (en ext4 no detectó el borrado y recreado). |
 | `SOURCE_TRUNCATED` | El tamaño es menor que el cursor, o el byte anterior al cursor ya no es `\n`. No detecta todos los truncamientos. |
 | `INGEST_FAILED` | Cualquier otra excepción, por ejemplo de SQLite. Se descarta el error original. |
 | `INVALID_SOURCE_ID` | El `sourceId` no cumple el patrón. |
@@ -116,7 +116,8 @@ No hay recuperación ni rotación automática.
 - En sistemas POSIX, un inode puede reutilizarse después de eliminar el archivo. Por tanto `dev:ino` **no garantiza detectar todas las sustituciones** después de borrar y recrear.
 - `dev` puede cambiar por características del almacenamiento o del montaje, y provocar `SOURCE_REPLACED` sin que el archivo haya cambiado.
 - El código no comprueba que `ino` sea distinto de 0. Con un sistema de archivos que no dé una identidad estable, la comparación no detectaría nada, o fallaría sin motivo.
-- No se ha validado experimentalmente el comportamiento en ext4, XFS, Btrfs, tmpfs, FAT/exFAT, ReFS, SMB, NFS ni FUSE. No debe leerse nada de lo anterior como resultado de pruebas.
+- Medido en CI (GitHub Actions, una sola ejecución, 2026-11-06): en ext4 (Ubuntu) el borrado y recreado **no** se detectó porque el inodo se reutilizó, y en APFS (macOS) sí. Depende del sistema de archivos y del momento, así que no es una garantía.
+- No se ha validado experimentalmente el comportamiento en XFS, Btrfs, tmpfs, FAT/exFAT, ReFS, SMB, NFS ni FUSE. No debe leerse nada de lo anterior como resultado de pruebas.
 
 **Truncamiento.** La detección actual comprueba dos cosas: que el tamaño no sea menor que el cursor, y que el byte anterior al cursor siga siendo `\n`. Si el archivo se trunca y se reescribe antes de la siguiente ingesta, puede volver a superar el cursor. Si además la identidad es la misma y en esa posición hay un `\n`, **no se detecta**. No se afirma que se detecte cualquier truncamiento ni cualquier sustitución. El test de truncamiento y reescritura pasa porque el byte de comprobación cambia, no porque el diseño lo garantice.
 
