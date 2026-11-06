@@ -1,5 +1,5 @@
 // Fase 7: añade o quita el hook global en ~/.claude/settings.json. Solo toca entradas propias: las que ejecutan `hook`
-// (la copia instalada en %APPDATA%\ClaudeOffice\hook). Copia .bak antes de escribir, escritura atómica e idempotente.
+// (la copia instalada en <appData>/ClaudeOffice/hook). Copia .bak antes de escribir, escritura atómica e idempotente.
 import { readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -10,7 +10,12 @@ const CODES = new Set(['SETTINGS_INVALID', 'SETTINGS_UNREADABLE']);
 // Los errores de fs llevan rutas: hacia fuera solo salen códigos fijos.
 export const errorCode = (e) => (CODES.has(e?.message) ? e.message : 'INSTALL_FAILED');
 
-export const entry = (hook) => ({ hooks: [{ type: 'command', command: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hook], timeout: 5 }] });
+// Windows: hook en PowerShell. macOS/Linux: hook .mjs ejecutado por el binario de la app como Node (`runtime`).
+// Si la aplicación cambia de ubicación, la entrada deja de coincidir y el estado pasa a «partial»; se corrige reinstalando.
+const command = (hook, runtime) => (hook.endsWith('.ps1')
+  ? { command: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hook] }
+  : { command: '/usr/bin/env', args: ['ELECTRON_RUN_AS_NODE=1', runtime, hook] });
+export const entry = (hook, runtime = process.execPath) => ({ hooks: [{ type: 'command', ...command(hook, runtime), timeout: 5 }] });
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const mine = (h, hook) => Array.isArray(h?.args) && h.args.includes(hook);
 

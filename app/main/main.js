@@ -11,7 +11,9 @@ const here = import.meta.dirname;
 const POLICY_DIR = join(app.getPath('appData'), 'ClaudeOffice');
 // Fase 7: el hook global (app/hook, copiado a HOOK) escribe aquí.
 const SOURCE = join(POLICY_DIR, 'hooks-events.jsonl');
-const HOOK = join(POLICY_DIR, 'hook', 'capture-event.ps1');
+// En Windows el hook es un script de PowerShell; en macOS y Linux es JavaScript y lo ejecuta el binario de la aplicación.
+const HOOK_FILE = process.platform === 'win32' ? 'capture-event.ps1' : 'capture-event.mjs';
+const HOOK = join(POLICY_DIR, 'hook', HOOK_FILE);
 const SETTINGS = join(process.env.CLAUDE_CONFIG_DIR ?? join(app.getPath('home'), '.claude'), 'settings.json');
 
 let win = null;
@@ -61,7 +63,7 @@ else {
   ipcMain.handle('hook', (e) => (fromWin(e) ? hookInfo() : null));
   ipcMain.handle('hook-apply', (e, action) => {
     if (!fromWin(e) || (action !== 'install' && action !== 'uninstall')) return null;
-    try { apply(SETTINGS, HOOK, action, join(here, '..', 'hook', 'capture-event.ps1')); return hookInfo(); } catch (err) { return hookInfo(errorCode(err)); }
+    try { apply(SETTINGS, HOOK, action, join(here, '..', 'hook', HOOK_FILE)); return hookInfo(); } catch (err) { return hookInfo(errorCode(err)); }
   });
   ipcMain.handle('set-policy', (e, id, st) => {
     if (!fromWin(e)) return [];

@@ -1,0 +1,26 @@
+# Integración continua: tests del backend y de la app, y comprobación de tipos, en Windows, Linux y macOS.
+# Los tests que requieren PowerShell de Windows se omiten en los demás sistemas.
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: npm test
+        working-directory: backend
+      - run: npm ci
+        working-directory: app
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1' # los tests se ejecutan con Node; no se necesita el binario de Electron
+      - run: npm test
+        working-directory: app
+      - run: npm run typecheck
+        working-directory: app

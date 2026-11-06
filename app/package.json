@@ -11,8 +11,8 @@
     "start": "vite build && electron .",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/*.test.js\"",
-    "dist": "vite build && electron-builder --win --dir",
-    "installer": "vite build && electron-builder --win nsis"
+    "dist": "vite build && electron-builder --dir",
+    "installer": "vite build && electron-builder"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -51,6 +51,14 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "deb",
+      "category": "Development",
+      "maintainer": "Guiille99"
     }
   }
 }

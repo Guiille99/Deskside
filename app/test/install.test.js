@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { EVENTS, apply, plan, hookStatus, errorCode } from '../main/install.js';
+import { spawn, spawnSync } from 'node:child_process';
+import { EVENTS, apply, entry, plan, hookStatus, errorCode } from '../main/install.js';
 import { validateLine } from '../../backend/src/validator.js';
 
 const HOOK_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.ps1');
@@ -99,4 +99,73 @@ test('hook de app/hook: pendiente, y tras activarlo escribe en %APPDATA%\\Claude
   const r = validateLine(log.trim());
   assert.equal(r.ok, true);
   assert.equal(r.event.project_id, pending.slice(0, -5));
+});
+
+// Hook de macOS/Linux: se ejecuta con el Node actual en cualquier sistema, copiado a <tmp>/ClaudeOffice/hook como lo instala la app.
+const MJS_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.mjs');
+const PAYLOADS = [
+  { hook_event_name: 'SessionStart', session_id: '11111111-2222', source: 'startup', model: 'claude-x[1m]', permission_mode: 'raro', prompt: 'ZZSECRETO7Q' },
+  { hook_event_name: 'PreToolUse', session_id: '11111111-2222', agent_id: 'a1', agent_type: 'Explore', tool_name: 'mcp__x__y', tool_use_id: 't1', tool_input: { command: 'ZZSECRETO7Q' } },
+  { hook_event_name: 'PostToolUse', session_id: '11111111-2222', agent_type: 'mio:plug', tool_name: 'Inventada', tool_use_id: 't1', duration_ms: 12, tool_response: 'ZZSECRETO7Q' },
+  { hook_event_name: 'PostToolUseFailure', session_id: '11111111-2222', agent_type: 'otro', tool_name: 'Bash', is_interrupt: true, error: 'ZZSECRETO7Q' },
+  { hook_event_name: 'Stop', session_id: '11111111-2222', stop_hook_active: false, background_tasks: [1, 2], session_crons: 'x', last_assistant_message: 'ZZSECRETO7Q' },
+  { hook_event_name: 'StopFailure', session_id: '11111111-2222', error: 'rate_limit' },
+  { hook_event_name: 'Notification', session_id: '11111111-2222', notification_type: 'ZZSECRETO7Q', message: 'ZZSECRETO7Q' },
+  { hook_event_name: 'SessionEnd', session_id: '11111111-2222', reason: 'prompt_input_exit' },
+  { hook_event_name: 'Desconocido', session_id: '11111111-2222' },
+  { hook_event_name: 'Stop', session_id: 'corto' },
+];
+const setup = (t, ext) => {
+  const d = tmp(t), proj = join(d, 'proyecto'), co = join(d, 'ClaudeOffice'), hook = join(co, 'hook', `capture-event.${ext}`);
+  mkdirSync(proj); mkdirSync(join(co, 'hook'), { recursive: true });
+  writeFileSync(hook, readFileSync(join(import.meta.dirname, '..', 'hook', `capture-event.${ext}`)));
+  const cmd = ext === 'mjs' ? [process.execPath, [hook]] : ['powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hook]];
+  const env = { ...process.env, APPDATA: d, CLAUDE_PROJECT_DIR: proj };
+  return { d, co, cmd, env, run: (p) => spawnSync(...cmd, { input: typeof p === 'string' ? p : JSON.stringify(p), env, encoding: 'utf8' }) };
+};
+const enable = (co) => { const [p] = readdirSync(join(co, 'pending')); renameSync(join(co, 'pending', p), join(co, 'enabled', p)); return p.slice(0, -5); };
+const lines = (co) => readFileSync(join(co, 'hooks-events.jsonl'), 'utf8').split(/\r?\n/).filter(Boolean);
+
+test('hook .mjs: entrada con env y el binario de la app', () => {
+  assert.deepEqual(entry('/h/capture-event.mjs', '/opt/Claude Office/claude-office').hooks[0],
+    { type: 'command', command: '/usr/bin/env', args: ['ELECTRON_RUN_AS_NODE=1', '/opt/Claude Office/claude-office', '/h/capture-event.mjs'], timeout: 5 });
+});
+
+test('hook .mjs: pendiente, excluido no escribe, activado escribe líneas válidas sin contenido', (t) => {
+  const { co, run } = setup(t, 'mjs');
+  assert.equal(run(PAYLOADS[0]).status, 0);
+  assert.deepEqual(readdirSync(join(co, 'pending')).map((f) => json(join(co, 'pending', f))), [{ name: 'proyecto' }]);
+  assert.equal(existsSync(join(co, 'hooks-events.jsonl')), false);
+  const id = enable(co);
+  writeFileSync(join(co, 'excluded', `${id}.json`), '{}');
+  assert.equal(run(PAYLOADS[0]).status, 0);
+  assert.equal(existsSync(join(co, 'hooks-events.jsonl')), false);
+  rmSync(join(co, 'excluded', `${id}.json`));
+  for (const p of PAYLOADS) assert.equal(run(p).status, 0);
+  const out = lines(co);
+  assert.equal(out.length, PAYLOADS.length - 2);
+  for (const l of out) { assert.equal(l.includes('ZZSECRETO7Q'), false); const r = validateLine(l); assert.equal(r.ok, true, l); assert.equal(r.event.project_id, id); }
+  assert.equal(run('no es json').status, 1);
+});
+
+test('hook .mjs: 20 procesos a la vez no pierden ni mezclan líneas', async (t) => {
+  const { co, cmd, env, run } = setup(t, 'mjs');
+  run(PAYLOADS[1]); enable(co);
+  const one = () => new Promise((ok) => { const c = spawn(...cmd, { env, stdio: ['pipe', 'ignore', 'ignore'] }); c.on('exit', ok); c.stdin.end(JSON.stringify(PAYLOADS[1])); });
+  assert.deepEqual(await Promise.all(Array.from({ length: 20 }, one)), Array(20).fill(0));
+  const out = lines(co);
+  assert.equal(out.length, 20);
+  for (const l of out) assert.equal(validateLine(l).ok, true);
+});
+
+test('paridad: el hook .mjs y el .ps1 dan las mismas líneas (salvo la hora) y el mismo project_id', { skip: hasPowerShell ? false : 'requiere powershell.exe' }, (t) => {
+  const mjs = setup(t, 'mjs'), ps = setup(t, 'ps1');
+  ps.env.CLAUDE_PROJECT_DIR = mjs.env.CLAUDE_PROJECT_DIR + '/'; // la barra final no cambia el project_id
+  mjs.run(PAYLOADS[0]); enable(mjs.co);
+  mkdirSync(join(ps.co, 'enabled'), { recursive: true });
+  writeFileSync(join(ps.co, 'install.key'), readFileSync(join(mjs.co, 'install.key')));
+  for (const f of readdirSync(join(mjs.co, 'enabled'))) writeFileSync(join(ps.co, 'enabled', f), '{}');
+  for (const p of PAYLOADS) { mjs.run(p); ps.run(p); }
+  const strip = (co) => lines(co).map((l) => ({ ...JSON.parse(l), timestamp: null }));
+  assert.deepEqual(strip(mjs.co), strip(ps.co));
 });
