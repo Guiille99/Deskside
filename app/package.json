@@ -1,20 +1,56 @@
 {
   "name": "claude-office-app",
   "private": true,
+  "version": "0.1.0",
+  "description": "Claude Office",
+  "author": "Guiille99",
   "type": "module",
   "main": "main/main.js",
   "scripts": {
     "build": "vite build",
     "start": "vite build && electron .",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "dist": "vite build && electron-builder --win --dir",
+    "installer": "vite build && electron-builder --win nsis"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "phaser": "^3.90.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
+  },
+  "build": {
+    "appId": "local.claude-office",
+    "productName": "Claude Office",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main/**",
+      "hook/**",
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/src",
+        "to": "backend/src"
+      },
+      {
+        "from": "../backend/package.json",
+        "to": "backend/package.json"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false
+    }
   }
 }
