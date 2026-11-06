@@ -86,59 +86,82 @@ function refresh() {
   office.setRows(view(), true);
 };
 
-function table(head: string[], body: (string | HTMLElement)[][], empty: string): HTMLElement {
-  if (!body.length) return el('p', 'text-slate-500', empty);
-  const t = el('table', 'w-full text-left');
-  const tr = el('tr', 'border-b border-slate-800 text-xs text-slate-400');
-  for (const h of head) tr.append(el('th', 'px-2 py-1 font-normal', h));
-  t.append(el('thead'), el('tbody'));
-  t.firstChild!.appendChild(tr);
-  for (const r of body) {
-    const row = el('tr', 'border-b border-slate-900');
-    for (const c of r) { const td = el('td', 'px-2 py-1'); td.append(c); row.append(td); }
-    t.lastChild!.appendChild(row);
-  }
-  return t;
+const BTN = 'rounded px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-sky-400';
+const PRIMARY = `${BTN} bg-emerald-700 font-medium text-white hover:bg-emerald-600`;
+const SECONDARY = `${BTN} border border-slate-600 hover:bg-slate-800`;
+function button(cls: string, text: string, run: () => Promise<void>): HTMLButtonElement {
+  const b = el('button', cls, text) as HTMLButtonElement;
+  b.onclick = async () => { b.disabled = true; try { await run(); } finally { b.disabled = false; } };
+  return b;
 }
 
+// Aviso en el botón del panel: se ve aunque el panel esté plegado.
+let hookOk = true;
+const updateAlert = () => { $('alert').hidden = hookOk && !projects.some((p) => p.status === 'pending'); };
+
+const CHIP: Record<Project['status'], string> = { enabled: 'text-emerald-400', excluded: 'text-slate-500', pending: 'text-amber-400' };
+const ORDER: Record<Project['status'], number> = { pending: 0, enabled: 1, excluded: 2 };
 function renderProjects() {
-  const action = (p: Project, to: 'enabled' | 'excluded', text: string) => {
-    const b = el('button', 'mr-2 rounded border border-slate-600 px-2 py-0.5 text-xs hover:bg-slate-800', text) as HTMLButtonElement;
-    b.onclick = async () => { setProjects(await window.office.setPolicy(p.project_id, to)); };
-    return b;
-  };
-  $('projects').replaceChildren(table(['Nombre', 'Id', 'Estado', 'Acciones'],
-    projects.map((p) => {
-      const acts = el('span');
-      if (p.status !== 'enabled') acts.append(action(p, 'enabled', p.status === 'pending' ? 'Autorizar' : 'Activar'));
-      if (p.status !== 'excluded') acts.append(action(p, 'excluded', 'Excluir'));
-      return [p.name ?? '—', short(p.project_id), POLICY[p.status], acts];
-    }),
-    'Sin proyectos. El hook crea uno pendiente la primera vez que se usa en una carpeta.'));
+  const set = (p: Project, to: 'enabled' | 'excluded') => async () => { setProjects(await window.office.setPolicy(p.project_id, to)); };
+  if (!projects.length) {
+    $('projects').replaceChildren(el('p', 'text-xs text-slate-500', 'Aún no hay proyectos. Aparecerán como pendientes la primera vez que uses Claude Code en una carpeta con el hook instalado.'));
+    return;
+  }
+  const list = el('ul', 'divide-y divide-slate-800');
+  for (const p of [...projects].sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.name ?? '').localeCompare(b.name ?? ''))) {
+    const li = el('li', 'flex items-center gap-2 py-2');
+    const info = el('div', 'min-w-0 flex-1');
+    const name = el('p', 'truncate', p.name ?? short(p.project_id));
+    name.title = `${p.name ?? '—'} (${short(p.project_id)})`;
+    info.append(name, el('p', `text-xs ${CHIP[p.status]}`, POLICY[p.status]));
+    li.append(info);
+    if (p.status !== 'enabled') li.append(button(p.status === 'pending' ? PRIMARY : SECONDARY, p.status === 'pending' ? 'Autorizar' : 'Activar', set(p, 'enabled')));
+    if (p.status !== 'excluded') li.append(button(SECONDARY, 'Excluir', set(p, 'excluded')));
+    list.append(li);
+  }
+  $('projects').replaceChildren(list);
 }
 
 function setProjects(p: Project[]) {
   projects = p;
   renderProjects();
+  updateAlert();
   refresh(); // el desplegable lleva los nombres de los proyectos
 }
 
 // Fase 7: el cambio que se va a hacer en settings.json se enseña antes de pulsar.
 const HOOK: Record<Hook['status'], string> = { installed: 'Instalado', partial: 'Incompleto', absent: 'No instalado', invalid: 'settings.json no válido' };
+const HOOK_HINT: Record<Hook['status'], string> = {
+  installed: 'Claude Code envía la actividad a la oficina.',
+  partial: 'Faltan entradas: repáralo para ver toda la actividad.',
+  absent: 'Instálalo para que la oficina reciba la actividad de Claude Code.',
+  invalid: 'Corrige ~/.claude/settings.json (no es JSON válido) y vuelve a abrir la app.',
+};
 function renderHook(h: Hook) {
-  const btn = (action: 'install' | 'uninstall', text: string) => {
-    const b = el('button', 'mr-2 rounded border border-slate-600 px-2 py-0.5 text-xs hover:bg-slate-800', text) as HTMLButtonElement;
-    b.onclick = async () => { renderHook(await window.office.hookApply(action)); };
-    return b;
-  };
-  const acts = el('p', 'my-2');
-  if (h.status === 'absent' || h.status === 'partial') acts.append(btn('install', h.status === 'partial' ? 'Reparar' : 'Instalar'));
-  if (h.status === 'installed' || h.status === 'partial') acts.append(btn('uninstall', 'Desinstalar'));
+  hookOk = h.status === 'installed';
+  updateAlert();
+  const apply = (action: 'install' | 'uninstall') => async () => { renderHook(await window.office.hookApply(action)); };
+  const head = el('p', `font-medium ${hookOk ? 'text-emerald-400' : 'text-amber-400'}`, `${HOOK[h.status]}${h.error ? ` (${h.error})` : ''}`);
+  const acts = el('p', 'my-2 flex gap-2');
+  if (h.status === 'absent' || h.status === 'partial') acts.append(button(PRIMARY, h.status === 'partial' ? 'Reparar' : 'Instalar', apply('install')));
+  if (h.status === 'installed' || h.status === 'partial') acts.append(button(SECONDARY, 'Desinstalar', apply('uninstall')));
   const details = el('details', 'text-xs text-slate-400');
-  details.append(el('summary', 'cursor-pointer', `Cambio en ~/.claude/settings.json: esta entrada en ${h.events.length} eventos (${h.events.join(', ')}). Antes se guarda una copia .bak; desinstalar solo quita estas entradas.`),
+  details.append(el('summary', 'cursor-pointer', 'Qué cambia en settings.json'),
+    el('p', 'mt-1', `Añade esta entrada en ${h.events.length} eventos (${h.events.join(', ')}). Antes guarda una copia .bak; desinstalar solo quita estas entradas.`),
     el('pre', 'mt-1 overflow-x-auto rounded bg-slate-900 p-2', h.entry));
-  $('hook').replaceChildren(el('p', '', `Estado: ${HOOK[h.status]}${h.error ? ` (${h.error})` : ''}`), acts, details);
+  $('hook').replaceChildren(head, el('p', 'text-xs text-slate-400', HOOK_HINT[h.status]), acts, details);
 }
+
+// El panel se pliega para dar más sitio a la oficina; Phaser (Scale.RESIZE) se recoloca con el resize.
+const PANEL = 'claude-office.panel';
+function showPanel(open: boolean) {
+  $('panel').hidden = !open;
+  $('toggle').setAttribute('aria-expanded', String(open));
+  try { localStorage.setItem(PANEL, open ? '1' : '0'); } catch { /* preferencia visual */ }
+  window.dispatchEvent(new Event('resize'));
+}
+$('toggle').onclick = () => showPanel($('toggle').getAttribute('aria-expanded') !== 'true');
+try { if (localStorage.getItem(PANEL) === '0') showPanel(false); } catch { /* sin almacenamiento: panel abierto */ }
 
 function setStatus(code: string | null) {
   const s = $('status');

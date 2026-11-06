@@ -8,18 +8,37 @@
     <title>Claude Office</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
-  <body class="bg-slate-950 text-slate-200 font-sans text-sm">
-    <header class="flex items-center gap-4 border-b border-slate-800 px-4 py-3">
-      <h1 class="text-base font-semibold">Claude Office</h1>
-      <select id="project" aria-label="Proyecto" class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"></select>
-      <span id="status" class="rounded px-2 py-0.5 text-xs"></span>
-      <span class="ml-auto text-xs text-slate-400">Ámbar: sesión · Azul: subagente (padre inferido) · Violeta: visitante · Mesa: trabajando · Reuniones: espera tu prompt · Cafetería: inactivo · Descanso: caducado · Rueda: desplazar</span>
+  <body class="flex h-screen flex-col overflow-hidden bg-slate-950 font-sans text-sm text-slate-200">
+    <header class="flex shrink-0 items-center gap-3 border-b border-slate-800 px-4 py-2">
+      <h1 class="text-base font-semibold whitespace-nowrap">Claude Office</h1>
+      <select id="project" aria-label="Proyecto" class="min-w-0 max-w-xs rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"></select>
+      <span id="status" class="rounded px-2 py-0.5 text-xs whitespace-nowrap"></span>
+      <button id="toggle" aria-controls="panel" aria-expanded="true" class="relative ml-auto rounded border border-slate-700 px-3 py-1 text-xs hover:bg-slate-800">
+        Panel<span id="alert" hidden class="absolute -top-1 -right-1 size-2.5 rounded-full bg-amber-400" title="Hay algo pendiente de configurar"><span class="sr-only">(hay algo pendiente)</span></span>
+      </button>
     </header>
-    <main class="grid gap-6 p-4">
-      <section class="min-w-0"><div id="scene" class="h-[65vh] overflow-hidden rounded border border-slate-800"></div></section>
-      <section><h2 class="mb-2 font-semibold">Proyectos</h2><div id="projects"></div></section>
-      <section><h2 class="mb-2 font-semibold">Hook global</h2><div id="hook"></div></section>
-    </main>
+    <div class="flex min-h-0 flex-1">
+      <main id="scene" class="min-w-0 flex-1 overflow-hidden"></main>
+      <aside id="panel" class="w-80 shrink-0 space-y-6 overflow-y-auto border-l border-slate-800 bg-slate-900/40 p-4">
+        <section aria-labelledby="h-hook"><h2 id="h-hook" class="mb-2 font-semibold">Hook global</h2><div id="hook"></div></section>
+        <section aria-labelledby="h-projects"><h2 id="h-projects" class="mb-2 font-semibold">Proyectos</h2><div id="projects"></div></section>
+        <section aria-labelledby="h-legend">
+          <h2 id="h-legend" class="mb-2 font-semibold">Leyenda</h2>
+          <ul class="space-y-1 text-xs text-slate-300">
+            <li><span class="mr-2 inline-block size-2.5 rounded-sm bg-amber-400"></span>Sesión</li>
+            <li><span class="mr-2 inline-block size-2.5 rounded-sm bg-sky-400"></span>Subagente (padre inferido)</li>
+            <li><span class="mr-2 inline-block size-2.5 rounded-sm bg-violet-400"></span>Visitante de otra sesión</li>
+          </ul>
+          <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <dt class="text-slate-400">Mesa</dt><dd>Trabajando o pidiendo permiso</dd>
+            <dt class="text-slate-400">Reuniones</dt><dd>Espera tu prompt</dd>
+            <dt class="text-slate-400">Cafetería</dt><dd>Subagente inactivo</dd>
+            <dt class="text-slate-400">Descanso</dt><dd>Sin actividad hace tiempo</dd>
+          </dl>
+          <p class="mt-3 text-xs text-slate-500">Usa la rueda del ratón sobre la oficina para desplazarte. Pasa el ratón por encima de alguien para ver su sesión.</p>
+        </section>
+      </aside>
+    </div>
     <div id="hud" hidden class="pointer-events-none fixed z-10 rounded border border-slate-700 bg-slate-900/95 px-3 py-2 text-xs shadow-lg"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
