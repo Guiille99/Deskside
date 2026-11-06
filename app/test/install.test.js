@@ -1,11 +1,11 @@
 // Fase 7: instalador del hook global (settings.json sintéticos en %TEMP%) y el hook de app/hook con un APPDATA aislado.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync, statSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { EVENTS, apply, entry, plan, hookStatus, errorCode } from '../main/install.js';
+import { EVENTS, POWERSHELL, apply, entry, plan, hookStatus, errorCode } from '../main/install.js';
 import { validateLine } from '../../backend/src/validator.js';
 
 const HOOK_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.ps1');
@@ -128,6 +128,36 @@ const setup = (t, ext) => {
 const enable = (co) => { const [p] = readdirSync(join(co, 'pending')); renameSync(join(co, 'pending', p), join(co, 'enabled', p)); return p.slice(0, -5); };
 const lines = (co) => readFileSync(join(co, 'hooks-events.jsonl'), 'utf8').split(/\r?\n/).filter(Boolean);
 
+// En Windows los permisos vienen de la ACL de la carpeta, no del modo POSIX.
+test('POSIX: sin original settings.json se crea con 0600; si existe, él y su .bak conservan su modo', { skip: process.platform === 'win32' ? 'solo POSIX' : false }, (t) => {
+  const d = tmp(t), { settings, hook } = paths(d);
+  const mode = (p) => statSync(p).mode & 0o777;
+  apply(settings, hook, 'install', HOOK_SRC);
+  assert.equal(mode(settings), 0o600);
+  chmodSync(settings, 0o640); // un modo distinto de 0600 y de 0644, para ver que se conserva y no se impone
+  writeFileSync(`${settings}.claude-office.tmp`, 'resto de un fallo', { mode: 0o644 });
+  apply(settings, hook, 'uninstall', HOOK_SRC);
+  assert.equal(mode(settings), 0o640);
+  assert.equal(mode(join(d, '.claude', baks(d)[0])), 0o640);
+});
+
+test('hook .ps1: PowerShell con ruta absoluta (no se busca en el directorio del proyecto)', () => {
+  const { command } = entry('C:\\h\\capture-event.ps1').hooks[0];
+  assert.equal(command, POWERSHELL);
+  assert.match(command, /^[A-Za-z]:\\.+\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe$/i);
+});
+
+test('hook .ps1: una entrada antigua con powershell.exe suelto queda como partial y reparar la sustituye', (t) => {
+  const d = tmp(t), { settings, hook } = paths(d);
+  mkdirSync(join(d, '.claude'));
+  const old = { type: 'command', command: 'powershell.exe', args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hook], timeout: 5 };
+  writeFileSync(settings, JSON.stringify({ hooks: Object.fromEntries(EVENTS.map((ev) => [ev, [{ hooks: [old] }]])) }));
+  assert.equal(hookStatus(settings, hook), 'partial');
+  apply(settings, hook, 'install', HOOK_SRC);
+  for (const ev of EVENTS) assert.deepEqual(json(settings).hooks[ev], [entry(hook)]);
+  assert.equal(hookStatus(settings, hook), 'installed');
+});
+
 test('hook .mjs: entrada con env y el binario de la app', () => {
   assert.deepEqual(entry('/h/capture-event.mjs', '/opt/Claude Office/claude-office').hooks[0],
     { type: 'command', command: '/usr/bin/env', args: ['ELECTRON_RUN_AS_NODE=1', '/opt/Claude Office/claude-office', '/h/capture-event.mjs'], timeout: 5 });
@@ -148,6 +178,12 @@ test('hook .mjs: pendiente, excluido no escribe, activado escribe líneas válid
   assert.equal(out.length, PAYLOADS.length - 2);
   for (const l of out) { assert.equal(l.includes('ZZSECRETO7Q'), false); const r = validateLine(l); assert.equal(r.ok, true, l); assert.equal(r.event.project_id, id); }
   assert.equal(run('no es json').status, 1);
+  if (process.platform !== 'win32') { // en Windows protege la ACL de %APPDATA%
+    const mode = (...p) => statSync(join(co, ...p)).mode & 0o777;
+    for (const d of ['enabled', 'excluded', 'pending']) assert.equal(mode(d), 0o700, d);
+    assert.equal(mode('install.key'), 0o600);
+    assert.equal(mode('hooks-events.jsonl'), 0o600);
+  }
 });
 
 test('hook .mjs: 20 procesos a la vez no pierden ni mezclan líneas', async (t) => {

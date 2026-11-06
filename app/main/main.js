@@ -1,7 +1,7 @@
 // Fase 4: proceso principal. Arranca el servicio en un utilityProcess, guarda el último estado (snapshot)
 // y reenvía los deltas al renderer por IPC. Sin puerto local ni contenido remoto.
 import { app, BrowserWindow, ipcMain, session, utilityProcess } from 'electron';
-import { appendFileSync, mkdirSync, watch } from 'node:fs';
+import { appendFileSync, chmodSync, mkdirSync, watch } from 'node:fs';
 import { join } from 'node:path';
 import { applyDelta } from './rows.js';
 import { listProjects, setPolicy } from './policy.js';
@@ -73,8 +73,10 @@ else {
 
   app.whenReady().then(() => {
     session.defaultSession.setPermissionRequestHandler((_wc, _p, cb) => cb(false));
-    mkdirSync(POLICY_DIR, { recursive: true });
-    appendFileSync(SOURCE, ''); // la ingesta da SOURCE_UNREADABLE si el hook aún no ha escrito nada
+    mkdirSync(POLICY_DIR, { recursive: true, mode: 0o700 });
+    // La carpeta solo para el usuario protege todo lo que hay dentro, también lo creado por versiones anteriores.
+    if (process.platform !== 'win32') chmodSync(POLICY_DIR, 0o700);
+    appendFileSync(SOURCE, '', { mode: 0o600 }); // la ingesta da SOURCE_UNREADABLE si el hook aún no ha escrito nada
     let t = null; // los pendientes nuevos los crea el hook: se avisa al renderer sin sondear
     watch(POLICY_DIR, { recursive: true }, () => {
       clearTimeout(t);

@@ -54,7 +54,8 @@ function main() {
   // Windows y macOS (por defecto) no distinguen mayúsculas y minúsculas en las rutas; Linux sí.
   const canonical = process.platform === 'linux' ? fullDir : fullDir.toLowerCase();
   const policyDir = dirname(import.meta.dirname);
-  for (const d of ['enabled', 'excluded', 'pending']) mkdirSync(join(policyDir, d), { recursive: true });
+  // Solo el usuario: los nombres de carpeta y la actividad no deben verlos otros usuarios del equipo.
+  for (const d of ['enabled', 'excluded', 'pending']) mkdirSync(join(policyDir, d), { recursive: true, mode: 0o700 });
   const keyPath = join(policyDir, 'install.key');
   createOnce(keyPath, randomBytes(32));
   const projectId = createHmac('sha256', readFileSync(keyPath)).update(canonical, 'utf8').digest('hex').slice(0, 32);
@@ -91,7 +92,7 @@ function main() {
 
   // Una escritura en modo append por línea evita mezclar líneas entre procesos en discos locales.
   // Limitación: en sistemas de archivos de red no está garantizado y sería necesario un bloqueo explícito.
-  appendFileSync(join(policyDir, 'hooks-events.jsonl'), JSON.stringify(event) + '\n');
+  appendFileSync(join(policyDir, 'hooks-events.jsonl'), JSON.stringify(event) + '\n', { mode: 0o600 });
 }
 
 try { main(); } catch {
