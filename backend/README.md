@@ -1,17 +1,24 @@
-# Claude Office: backend H1 (validador e ingesta SQLite)
+# Claude Office: backend
 
-Primer núcleo del backend: valida cada línea del registro JSONL de los hooks con la lista blanca del esquema Nuevo y guarda en SQLite solo los eventos válidos, con avance transaccional del cursor.
+Núcleo del proyecto, sin dependencias externas. Este documento cubre:
+
+1. Validación e ingesta: valida cada línea del registro JSONL de los hooks con la lista blanca del esquema Nuevo y guarda en SQLite solo los eventos válidos, con avance transaccional del cursor.
+2. Modelo de identidad y jerarquía (`src/hierarchy.js`): sesiones, agentes, herramientas, relaciones y anomalías.
+3. Servicio, `presence` y CLI de diagnóstico.
+
+Visión general del proyecto: [README.md](../README.md) de la raíz.
 
 ## Requisitos
 
-- Node.js 26 (probado con v26.13.0). Usa `node:sqlite` (clase `Database`), `node:test` y `node:fs`.
+- Node.js 26 (probado con v26.13.0). Usa `node:sqlite` (clase `DatabaseSync`), `node:test` y `node:fs`. `schema.js` también funciona con el Node 24 que trae Electron 45.
 - Ninguna dependencia externa.
 - Para los tests de paridad, Windows PowerShell 5.1 (`powershell.exe`). Sin él, esos tres tests se marcan como omitidos, con el motivo en el informe de `node:test`.
 
 ## Entorno validado
 
-- **Validado:** Windows 11, Node.js v26.13.0, con el proyecto y `%TEMP%` en NTFS local (unidad C:). En ese entorno pasan los 33 tests.
-- **No validado:** Linux, macOS y cualquier otro sistema operativo o sistema de archivos. **Los tests no se han ejecutado allí.** Todo lo que este documento dice sobre POSIX es razonamiento sobre cómo funcionan los inodes, no resultado de pruebas.
+- **Validado:** Windows 11, Node.js v26.13.0, con el proyecto y `%TEMP%` en NTFS local (unidad C:). En ese entorno pasan los 106 tests.
+- **Solo en CI:** el workflow de la raíz (`.github/workflows/ci.yml`) ejecuta los tests también en Ubuntu y macOS. No se ha hecho ninguna validación manual allí. Lo que este documento dice sobre POSIX es razonamiento sobre cómo funcionan los inodes, salvo la medición única de CI indicada más abajo.
+- **No validado:** cualquier otro sistema operativo o sistema de archivos.
 
 ## Ejecutar los tests
 
@@ -24,13 +31,16 @@ Cada test crea su propia carpeta en `%TEMP%` (`co-h1-*`) y la borra al terminar.
 
 ### Inventario de tests
 
-Total esperado: **33** (8 + 22 + 3). Resultado esperado en el entorno validado: 33 aprobados, 0 fallidos, 0 omitidos. Sin `powershell.exe`: 30 aprobados y 3 omitidos.
+Total esperado: **106** (8 + 22 + 3 + 54 + 12 + 7). Resultado esperado en el entorno validado: 106 aprobados, 0 fallidos, 0 omitidos. Sin `powershell.exe`: 103 aprobados y 3 omitidos.
 
 | Archivo | Tests | Clasificación |
 |---|---|---|
-| `test/validator.test.js` | 8 | Portables por diseño: no hacen E/S. Ejecutados solo en Windows. |
-| `test/ingest.test.js` | 22 | Portables por diseño: usan solo `node:fs` y `node:sqlite`. Ejecutados solo en Windows. Cinco dependen de la semántica del sistema de archivos (ver abajo). |
+| `test/validator.test.js` | 8 | Portables por diseño: no hacen E/S. |
+| `test/ingest.test.js` | 22 | Portables por diseño: usan solo `node:fs` y `node:sqlite`. Cinco dependen de la semántica del sistema de archivos (ver abajo). |
 | `test/parity.test.js` | 3 | **Específicos de Windows**: ejecutan `powershell.exe` y el auditor `.ps1`. Se omiten si no está. |
+| `test/hierarchy.test.js` | 54 | Modelo de jerarquía sobre filas sintéticas. |
+| `test/presence.test.js` | 12 | Estados y caducidades. |
+| `test/service.test.js` | 7 | Servicio y CLI sobre archivos temporales. |
 
 Tests de `ingest.test.js` que dependen del sistema de archivos:
 
@@ -50,8 +60,13 @@ Los demás tests de `ingest.test.js` (esquema, T0-F, BOM, CRLF, líneas incomple
 | `src/validator.js` | `validateLine(texto)` devuelve `{ ok: true, event }` o `{ ok: false, code }`. Incluye un parser JSON estricto propio, porque `JSON.parse` pierde las claves duplicadas y la forma del número. No hace E/S. |
 | `src/schema.js` | DDL de las tres tablas y `openDatabase(ruta)`. |
 | `src/ingest.js` | `ingest(db, { sourceId, path, batchLines, batchBytes })`: lectura incremental por bytes, lotes transaccionales y control de la identidad de la fuente. |
+| `src/hierarchy.js` | `buildModel(rows)` y `loadModel(db)`: modelo de sesiones, agentes y relaciones. Ver «Modelo de identidad y jerarquía». |
+| `src/presence.js` | `presence(model, nowMs, ttl)`: estado de cada sesión y agente. |
+| `src/service.js` | `startService(...)`: ingesta continua, retención y notificación del modelo. |
+| `src/cli.js` | Diagnóstico por línea de comandos (`npm run diag`). |
+| `tools/audit-log.ps1` | Auditor del registro con la lista blanca de referencia (PowerShell 5.1). Lo usan los tests de paridad. |
 | `test/fixtures/cases.js` | Unos 135 casos sintéticos con el código esperado de cada uno, y la marca `ZZSECRETO7Q` en campos prohibidos y claves desconocidas. |
-| `test/fixtures/t0f.jsonl` | T0-F literal de la rev3. |
+| `test/fixtures/t0f.jsonl` | Fixture T0-F: nueve líneas, la primera válida y las otras ocho rechazadas, cada una con su código. |
 
 ## Esquema SQLite
 
@@ -181,22 +196,21 @@ Medidas ejecutando el auditor sobre `test/fixtures/cases.js`. Las fija `test/par
 ## Riesgos conocidos
 
 - Identidad física, truncamiento, movimiento y `sourceId`: ver «Identidad física del archivo y portabilidad». En resumen, la detección de sustituciones y truncamientos es parcial, y solo está comprobada en Windows NTFS local. No se guarda ningún hash del contenido para no almacenar datos derivados del registro.
-- Linux, macOS y los demás sistemas de archivos no están validados: los tests no se han ejecutado allí.
+- Linux, macOS y los demás sistemas de archivos: los tests solo se ejecutan en CI, sin validación manual.
 - `node:sqlite` en Node 26 sigue evolucionando. Se ha probado con v26.13.0.
 - La paridad se ha medido con Windows PowerShell 5.1. PowerShell 7 (`pwsh`) usa otro parser JSON y podría comportarse distinto.
 
 ## Deuda técnica
 
-- Las listas de la lista blanca están duplicadas entre `src/validator.js` y `backend/tools/audit-log.ps1`. Un test compara la lista blanca con la sección 2, pero no lee el `.ps1`.
-- No hay ningún punto de entrada (CLI o servicio) que llame a `ingest`. Queda para H2 o después.
-- `journal_mode` es el que trae SQLite por defecto. Cuando haya lectores concurrentes (API, H2+), conviene valorar WAL.
+- La lista blanca está duplicada entre `src/validator.js`, `tools/audit-log.ps1` y los dos hooks de `app/hook/`. Un test comprueba las listas del validador contra una copia literal en el propio test; no lee el `.ps1`. Los cambios hay que hacerlos en todos a la vez.
+- `ingest` por sí solo no cambia el `journal_mode` de SQLite. Solo `startService` activa WAL.
 - El texto de las incidencias del auditor se interpreta con una regex sobre `L<n> |` en `parity.test.js`. Si cambia ese formato, el test falla.
 
 ---
 
-# H2-B: modelo de identidad y jerarquía (`src/hierarchy.js`)
+# Modelo de identidad y jerarquía (`src/hierarchy.js`)
 
-Deriva sesiones, MAIN, agentes, invocaciones de herramientas, relaciones y anomalías a partir de los eventos que H1 guarda en `event`. No persiste nada, no lee contenido y no modifica H1.
+Deriva sesiones, MAIN, agentes, invocaciones de herramientas, relaciones y anomalías a partir de los eventos que la ingesta guarda en `event`. No persiste nada, no lee contenido y no modifica la ingesta.
 
 ## API pública
 
@@ -252,12 +266,12 @@ const model2 = buildModel(rows);    // constructor puro: sin SQLite, sin hora, s
 
 ## Anomalías
 
-`SOLO_START`, `SOLO_STOP`, `REPEATED`, `NEGATIVE_INTERVAL`, `CONTEXT_CONFLICT` (C4), `ATTR_CONFLICT` (`agent_type` en un agente, `tool_name` en una invocación, `project_id` en una sesión) y `SOURCE_COLLISION`. Se aplican a agentes (`SubagentStart`/`SubagentStop`) y a invocaciones (`PreToolUse` frente a `PostToolUse`/`PostToolUseFailure`). Cada anomalía lleva las referencias `{source_id, byte_offset, event, timestamp}` de todas sus evidencias. Los eventos sin `tool_use_id` no se emparejan y no son anomalía. La ausencia de `SessionStart`/`SessionEnd` se ve como lista vacía, sin anomalía. Un intervalo negativo no produce duración.
+`SOLO_START`, `SOLO_STOP`, `REPEATED`, `NEGATIVE_INTERVAL`, `CONTEXT_CONFLICT`, `ATTR_CONFLICT` (`agent_type` en un agente, `tool_name` en una invocación, `project_id` en una sesión) y `SOURCE_COLLISION`. Se aplican a agentes (`SubagentStart`/`SubagentStop`) y a invocaciones (`PreToolUse` frente a `PostToolUse`/`PostToolUseFailure`). Cada anomalía lleva las referencias `{source_id, byte_offset, event, timestamp}` de todas sus evidencias. Los eventos sin `tool_use_id` no se emparejan y no son anomalía. La ausencia de `SessionStart`/`SessionEnd` se ve como lista vacía, sin anomalía. Un intervalo negativo no produce duración.
 
 - `NEGATIVE_INTERVAL`: existe algún Stop (o cierre) anterior a algún Start (o `Pre`) de la misma entidad y partición, comparado en ticks exactos de 100 ns. Timestamps iguales no son negativos. La anomalía lleva todos los eventos de la entidad. No se empareja nada, así que una secuencia Start, Stop, Start, Stop también se marca (no se puede distinguir un reinicio de un Stop anómalo). La duración solo existe con un Start y un Stop no negativos.
 - `REPEATED` tiene tres ámbitos: `event` (duplicado exacto: mismo contenido salvo `source_id` y `byte_offset`, en la misma partición; no se elimina ninguno), `agent` e `invocation` (varios Start/Stop o varios Pre/cierres). Si el REPEATED de agente o de invocación solo repite ese mismo evento duplicado, no se emite aparte: queda anotado en `detail.entities` del REPEATED de evento. Con eventos distintos se emite además el suyo. Dos eventos iguales en otro instante no son duplicados.
 
-## C4
+## Conflictos de contexto
 
 `model.counts.context_conflicts` es el número de invocaciones (dentro de su partición) con más de un contexto. Cero significa que no hay ninguno. Los conflictos aparecen en `anomalies` con `code: 'CONTEXT_CONFLICT'`.
 
@@ -281,13 +295,13 @@ const model2 = buildModel(rows);    // constructor puro: sin SQLite, sin hora, s
 - Una reanudación registrada en otra fuente no se enlaza con la sesión original más allá de compartir `session_id`.
 - El cruce lanzador/hijo es cuadrático por partición.
 - `NEGATIVE_INTERVAL` marca cualquier orden Stop-antes-que-Start sin emparejar, por lo que un reinicio legítimo del mismo `agent_id` también se señala.
-- No hay API HTTP, WebSocket, interfaz ni persistencia del modelo; el modelo se recalcula en cada cambio (ver Fase 3).
+- No hay API HTTP, WebSocket, interfaz ni persistencia del modelo; el modelo se recalcula en cada cambio (ver «Servicio, `presence` y diagnóstico»).
 
-# Fase 3: servicio, `presence` y diagnóstico
+# Servicio, `presence` y diagnóstico
 
 ## `src/presence.js`
 
-`presence(model, nowMs, ttl = TTL_MS)` → `{ sessions: [{ session_id, project_id, state, since }], agents: [{ session_id, source_id, agent_id, agent_types, state, since }] }`. Función pura sobre el modelo de H2-B; `since` es el timestamp del evento que decide el estado (o `null`).
+`presence(model, nowMs, ttl = TTL_MS)` → `{ sessions: [{ session_id, project_id, state, since }], agents: [{ session_id, source_id, agent_id, agent_types, state, since }] }`. Función pura sobre el modelo de jerarquía; `since` es el timestamp del evento que decide el estado (o `null`).
 
 El estado sale del último evento significativo de cada actor (MAIN junto con `SessionStart`/`SessionEnd` de la sesión; cada agente con sus propios eventos). `Notification` se ignora.
 
@@ -314,7 +328,7 @@ El estado sale del último evento significativo de cada actor (MAIN junto con `S
 ## `src/cli.js` (diagnóstico)
 
 ```powershell
-node src/cli.js --db <ruta.db> [--source <ruta.jsonl> [--watch]]
+npm run diag -- --db <ruta.db> [--source <ruta.jsonl> [--watch]]
 ```
 
 Imprime en JSON solo recuentos: eventos, rechazos por código, sesiones, agentes, anomalías y estados de `presence`. Con `--source` ingiere antes (`sourceId` = `hooks`); con `--watch` arranca el servicio (que **aplica la retención**) e imprime una línea por cambio. Los errores salen como código fijo.
