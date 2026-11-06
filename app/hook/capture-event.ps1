@@ -1,7 +1,7 @@
 
 $ErrorActionPreference = "Stop"
 
-# Lista blanca y valores documentados: duplicados de pruebas\audit-log.ps1 (referencia normativa) y backend\src\validator.js. Cambiar las tres a la vez
+# Lista blanca y valores documentados: duplicados de backend\tools\audit-log.ps1 (referencia normativa) y backend\src\validator.js. Cambiar las tres a la vez
 $extraFields = @{
     SessionStart = @('source', 'model'); SessionEnd = @('reason'); UserPromptSubmit = @()
     Stop = @('stop_hook_active', 'background_tasks_count', 'session_crons_count')

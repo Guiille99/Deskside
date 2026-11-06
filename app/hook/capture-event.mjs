@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, linkSync, unlinkSync, existsSync, mkdirSyn
 import { createHmac, randomBytes } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';
 
-// Lista blanca de campos y valores. Se mantiene en sincronía con capture-event.ps1, pruebas/audit-log.ps1 y backend/src/validator.js.
+// Lista blanca de campos y valores. Se mantiene en sincronía con capture-event.ps1, backend/tools/audit-log.ps1 y backend/src/validator.js.
 const EXTRA = {
   SessionStart: ['source', 'model'], SessionEnd: ['reason'], UserPromptSubmit: [],
   Stop: ['stop_hook_active', 'background_tasks_count', 'session_crons_count'],

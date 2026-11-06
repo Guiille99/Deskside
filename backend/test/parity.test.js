@@ -1,9 +1,9 @@
-// Paridad con pruebas/audit-log.ps1 -Schema Nuevo, ejecutado solo sobre fixtures sintéticos de H1.
+// Paridad con backend/tools/audit-log.ps1 -Schema Nuevo, ejecutado solo sobre fixtures sintéticos de H1.
 // Se omite si no hay Windows PowerShell (powershell.exe).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -12,11 +12,11 @@ import { openDatabase } from '../src/schema.js';
 import { ingest } from '../src/ingest.js';
 import { CASES, BLANK } from './fixtures/cases.js';
 
-const AUDITOR = fileURLToPath(new URL('../../pruebas/audit-log.ps1', import.meta.url));
+const AUDITOR = fileURLToPath(new URL('../tools/audit-log.ps1', import.meta.url));
 const T0F = fileURLToPath(new URL('./fixtures/t0f.jsonl', import.meta.url));
 const hasPowerShell = spawnSync('powershell.exe', ['-NoProfile', '-Command', 'exit 0']).status === 0;
-// Tests específicos de Windows: sin powershell.exe se omiten y el motivo sale en el informe de node:test.
-const SKIP = hasPowerShell ? false : 'requiere powershell.exe (Windows PowerShell 5.1)';
+// Se omiten sin powershell.exe o sin el auditor (por si se ejecuta fuera del repositorio completo); el motivo sale en el informe de node:test.
+const SKIP = !hasPowerShell ? 'requiere powershell.exe (Windows PowerShell 5.1)' : !existsSync(AUDITOR) ? 'falta backend/tools/audit-log.ps1' : false;
 
 // Casos en los que el auditor acepta y el validador JS rechaza (documentados en backend/README.md).
 const KNOWN_DIFFERENCES = ['evento-guion-blando-escapado', 'evento-guion-blando-literal', 'evento-zwj-escapado',

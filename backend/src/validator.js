@@ -1,4 +1,4 @@
-// Validador estricto del esquema Nuevo. Referencia normativa: pruebas/audit-log.ps1 -Schema Nuevo
+// Validador estricto del esquema Nuevo. Referencia normativa: backend/tools/audit-log.ps1 -Schema Nuevo
 // y la sección 2 del protocolo (rev3). No normaliza: un valor que no encaja rechaza la línea.
 // Nunca devuelve ni registra contenido de la línea: solo { ok: true, event } o { ok: false, code }.
 

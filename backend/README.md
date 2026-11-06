@@ -20,7 +20,7 @@ cd backend
 npm test
 ```
 
-Cada test crea su propia carpeta en `%TEMP%` (`co-h1-*`) y la borra al terminar. Los tests de paridad ejecutan `pruebas/audit-log.ps1 -Schema Nuevo` solo sobre fixtures sintéticos: `test/fixtures/t0f.jsonl` y archivos generados en esas carpetas temporales. Nunca leen el registro real.
+Cada test crea su propia carpeta en `%TEMP%` (`co-h1-*`) y la borra al terminar. Los tests de paridad ejecutan `backend/tools/audit-log.ps1 -Schema Nuevo` solo sobre fixtures sintéticos: `test/fixtures/t0f.jsonl` y archivos generados en esas carpetas temporales. Nunca leen el registro real.
 
 ### Inventario de tests
 
@@ -186,7 +186,7 @@ Medidas ejecutando el auditor sobre `test/fixtures/cases.js`. Las fija `test/par
 
 ## Deuda técnica
 
-- Las listas de la lista blanca están duplicadas entre `src/validator.js` y `pruebas/audit-log.ps1`. Un test compara la lista blanca con la sección 2, pero no lee el `.ps1`.
+- Las listas de la lista blanca están duplicadas entre `src/validator.js` y `backend/tools/audit-log.ps1`. Un test compara la lista blanca con la sección 2, pero no lee el `.ps1`.
 - No hay ningún punto de entrada (CLI o servicio) que llame a `ingest`. Queda para H2 o después.
 - `journal_mode` es el que trae SQLite por defecto. Cuando haya lectores concurrentes (API, H2+), conviene valorar WAL.
 - El texto de las incidencias del auditor se interpreta con una regex sobre `L<n> |` en `parity.test.js`. Si cambia ese formato, el test falla.
