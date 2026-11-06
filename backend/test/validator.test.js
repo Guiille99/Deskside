@@ -12,7 +12,8 @@ test('cada caso sintético da el resultado esperado', () => {
 });
 
 test('T0-F de la rev3: L1 válida y L2..L9 rechazadas con su código', () => {
-  const lines = readFileSync(new URL('./fixtures/t0f.jsonl', import.meta.url), 'utf8').split('\n').filter(Boolean);
+  // Acepta CRLF: si git convierte el fixture en Windows, cada línea llegaría con \r al final
+  const lines = readFileSync(new URL('./fixtures/t0f.jsonl', import.meta.url), 'utf8').split(/\r?\n/).filter(Boolean);
   assert.equal(lines.length, 9);
   assert.deepEqual(lines.map((l) => { const r = validateLine(l); return r.ok ? null : r.code; }), T0F_CODES);
 });

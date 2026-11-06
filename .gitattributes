@@ -1,0 +1,2 @@
+# Los fixtures de líneas JSONL dependen de los saltos de línea exactos: siempre LF, también en Windows.
+*.jsonl text eol=lf
