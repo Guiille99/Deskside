@@ -1,4 +1,4 @@
-// Fase 4: política de proyectos de la Fase 2 (%APPDATA%\ClaudeOffice\<estado>\<project_id>.json), la misma que lee el hook.
+// Política de proyectos (%APPDATA%\ClaudeOffice\<estado>\<project_id>.json), la misma que lee el hook.
 import { readdirSync, readFileSync, renameSync, unlinkSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 

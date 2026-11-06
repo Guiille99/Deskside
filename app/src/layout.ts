@@ -1,4 +1,4 @@
-// Fase 5: colocación de mesas, pura (sin Phaser) para poder probarla con node --test.
+// Colocación de mesas, pura (sin Phaser) para poder probarla con node --test.
 import type { Row } from './types.ts';
 
 // Las mesas van en bloques de BLOCK_C × BLOCK_R puestos separados por pasillos de AISLE px.
@@ -55,7 +55,7 @@ export function layout(rows: Record<string, Row>, width: number, prev = new Map<
   };
 }
 
-// Fase 6: la oficina de un proyecto. A la izquierda la zona de mesas (layout(), bajo una pared con estanterías);
+// La oficina de un proyecto. A la izquierda la zona de mesas (layout(), bajo una pared con estanterías);
 // en medio un pasillo con la puerta de entrada arriba; a la derecha tres salas apiladas con la puerta hacia el pasillo.
 export const WALL = 48, CORRIDOR = 56, ROOM_W = 304, ROOM_H = 216, ROOM_WALL = 56;
 export type Room = 'cafe' | 'meeting' | 'lounge';

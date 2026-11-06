@@ -38,7 +38,7 @@ function setup(t) {
   return ctx;
 }
 
-test('1. el modelo se actualiza en < 1 s tras añadir un evento (salida de la Fase 3)', async (t) => {
+test('1. el modelo se actualiza en < 1 s tras añadir un evento', async (t) => {
   const c = setup(t);
   writeFileSync(c.log, line('SessionStart', nowIso(), undefined, { source: 'startup' }));
   c.start();

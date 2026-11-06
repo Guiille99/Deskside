@@ -1,4 +1,4 @@
-// Fase 4: proceso principal. Arranca el servicio en un utilityProcess, guarda el último estado (snapshot)
+// Proceso principal. Arranca el servicio en un utilityProcess, guarda el último estado (snapshot)
 // y reenvía los deltas al renderer por IPC. Sin puerto local ni contenido remoto.
 import { app, BrowserWindow, ipcMain, session, utilityProcess } from 'electron';
 import { appendFileSync, chmodSync, mkdirSync, watch } from 'node:fs';
@@ -9,7 +9,7 @@ import { EVENTS, apply, entry, errorCode, hookStatus } from './install.js';
 
 const here = import.meta.dirname;
 const POLICY_DIR = join(app.getPath('appData'), 'ClaudeOffice');
-// Fase 7: el hook global (app/hook, copiado a HOOK) escribe aquí.
+// El hook global (app/hook, copiado a HOOK) escribe aquí.
 const SOURCE = join(POLICY_DIR, 'hooks-events.jsonl');
 // En Windows el hook es un script de PowerShell; en macOS y Linux es JavaScript y lo ejecuta el binario de la aplicación.
 const HOOK_FILE = process.platform === 'win32' ? 'capture-event.ps1' : 'capture-event.mjs';

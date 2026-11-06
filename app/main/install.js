@@ -1,4 +1,4 @@
-// Fase 7: añade o quita el hook global en ~/.claude/settings.json. Solo toca entradas propias: las que ejecutan `hook`
+// Añade o quita el hook global en ~/.claude/settings.json. Solo toca entradas propias: las que ejecutan `hook`
 // (la copia instalada en <appData>/ClaudeOffice/hook). Copia .bak antes de escribir, escritura atómica e idempotente.
 import { readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync, statSync, rmSync } from 'node:fs';
 import { dirname, win32 } from 'node:path';

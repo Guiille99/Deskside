@@ -4,7 +4,7 @@ import { ALL_FIELDS } from '../src/validator.js';
 import { buildModel } from '../src/hierarchy.js';
 import { presence, STATES, TTL_MS } from '../src/presence.js';
 
-// Fixtures sintéticos con la forma de las filas de H1 (NULL para lo ausente). Segundos relativos a T0.
+// Fixtures sintéticos con la forma de las filas de `event` (NULL para lo ausente). Segundos relativos a T0.
 const T0 = Date.UTC(2026, 9, 31, 10, 0, 0);
 let seq = 0;
 const ts = (s) => `${new Date(T0 + s * 1000).toISOString().slice(0, 19)}.0000000+00:00`;

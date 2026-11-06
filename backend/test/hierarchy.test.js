@@ -8,7 +8,7 @@ import { ingest } from '../src/ingest.js';
 import { ALL_FIELDS } from '../src/validator.js';
 import { buildModel, loadModel, LAUNCH_WINDOW_MS, ANOMALY_CODES } from '../src/hierarchy.js';
 
-// Fixtures sintéticos: filas con la forma que H1 guarda (NULL para lo ausente).
+// Fixtures sintéticos: filas con la forma que guarda la ingesta (NULL para lo ausente).
 const SID = 'sess-0001';
 let seq = 0;
 const ts = (s, f = 0) => `${new Date(Date.UTC(2026, 9, 31, 10, 0, s)).toISOString().slice(0, 19)}.${String(f).padStart(7, '0')}+00:00`;
@@ -320,7 +320,7 @@ test('28. los eventos originales no se modifican', () => {
   assert.deepEqual(rows, copy);
 });
 
-test('29. construir el modelo no escribe en SQLite y hierarchy.js no depende de H1 ni de SQLite', () => {
+test('29. construir el modelo no escribe en SQLite y hierarchy.js no depende de la ingesta ni de SQLite', () => {
   const db = openDatabase(':memory:');
   insert(db, fixture());
   const snap = () => JSON.stringify(['event', 'ingest_reject', 'ingest_cursor'].map((t) => db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all()));

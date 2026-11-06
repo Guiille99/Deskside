@@ -1,4 +1,4 @@
-// Paridad con backend/tools/audit-log.ps1 -Schema Nuevo, ejecutado solo sobre fixtures sintéticos de H1.
+// Paridad con backend/tools/audit-log.ps1 -Schema Nuevo, ejecutado solo sobre fixtures sintéticos.
 // Se omite si no hay Windows PowerShell (powershell.exe).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

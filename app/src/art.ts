@@ -1,4 +1,4 @@
-// Fase 6: arte propio en pixel art, sin assets externos (nada que licenciar). Puro, sin Phaser, para probarlo con node --test.
+// Arte propio en pixel art, sin assets externos (nada que licenciar). Puro, sin Phaser, para probarlo con node --test.
 // Píxel base dibujado a escala ×2. Cada sprite es una lista de filas; cada carácter es una clave de la paleta y '.' es
 // transparente (formato de Phaser textures.generate, que admite cualquier carácter como clave).
 // Estilo: contorno oscuro, vista de 3/4, personajes cabezones (chibi) y madera cálida.
@@ -21,7 +21,7 @@ export const PALETTE: Record<string, string> = {
   G: '#a8dcec', K: '#6fb3cf', Y: '#f2c94c', // cristal y agua, sol
   M: '#c95d72', Q: '#9c4357', U: '#e0889a', // sofá
 };
-// Camisa por rol, igual que en la Fase 5: MAIN ámbar, hijo inferido celeste, visitante violeta.
+// Camisa por rol: MAIN ámbar, hijo inferido celeste, visitante violeta.
 export const ROLES = { main: ['#e0a33a', '#b37a22'], child: ['#4fb3e8', '#2f80b8'], visitor: ['#a78bfa', '#7656d6'] } as const;
 export type Role = keyof typeof ROLES;
 export const SKINS = [['#f3c9a4', '#d99f7c'], ['#d4a373', '#b0805a'], ['#8d5a3b', '#6e4329']];

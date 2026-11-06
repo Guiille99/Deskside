@@ -1,4 +1,4 @@
-// Fase 5: oficina en Phaser + panel de proyectos. Todo el texto del DOM entra con textContent (el nombre de carpeta no es de confianza).
+// Oficina en Phaser + panel de proyectos. Todo el texto del DOM entra con textContent (el nombre de carpeta no es de confianza).
 import type { Delta, Hook, Project, Row } from './types.ts';
 import { createOffice } from './office.ts';
 
@@ -38,7 +38,7 @@ const projectName = (id: string | null) => (id === null ? '—' : projects.find(
 const sessionName = (sid: string) => { const r = rows[`s:${sid}`]; return r?.kind === 'session' ? projectName(r.project_id) : '—'; };
 const office = createOffice($('scene'), $('hud'), sessionName);
 
-// Una oficina por proyecto. Las sesiones sin project_id (conflicto o datos de antes de la Fase 2) van a «Sin proyecto».
+// Una oficina por proyecto. Las sesiones sin project_id (conflicto o datos anteriores al project_id) van a «Sin proyecto».
 const NONE = '';
 const KEY = 'claude-office.project';
 let selected: string | null = null;
@@ -129,7 +129,7 @@ function setProjects(p: Project[]) {
   refresh(); // el desplegable lleva los nombres de los proyectos
 }
 
-// Fase 7: el cambio que se va a hacer en settings.json se enseña antes de pulsar.
+// El cambio que se va a hacer en settings.json se enseña antes de pulsar.
 const HOOK: Record<Hook['status'], string> = { installed: 'Instalado', partial: 'Incompleto', absent: 'No instalado', invalid: 'settings.json no válido' };
 const HOOK_HINT: Record<Hook['status'], string> = {
   installed: 'Claude Code envía la actividad a la oficina.',

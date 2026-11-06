@@ -1,4 +1,4 @@
-// Fase 6: los sprites son rectangulares y solo usan claves de la paleta.
+// Los sprites son rectangulares y solo usan claves de la paleta.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PALETTE, CHAR, STAND, SPRITES, ROLES, SKINS, HAIRS, variant, charPalette } from '../src/art.ts';

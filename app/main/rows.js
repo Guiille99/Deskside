@@ -1,4 +1,4 @@
-// Filas planas para la UI a partir de presence() y del modelo (Fase 5: herramienta abierta, padre y recuentos).
+// Filas planas para la UI a partir de presence() y del modelo (herramienta abierta, padre y recuentos).
 // Deltas entre dos estados. Sin referencias a eventos: solo valores ya validados y recuentos.
 import { ticks } from '../../backend/src/hierarchy.js';
 

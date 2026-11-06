@@ -1,4 +1,4 @@
-// Fase 3: servicio que vigila el JSONL, lo ingiere y entrega el modelo de jerarquía cuando cambia.
+// Servicio que vigila el JSONL, lo ingiere y entrega el modelo de jerarquía cuando cambia.
 // fs.watch da la latencia baja; el sondeo cubre lo que fs.watch pierde (archivo aún sin crear, renombrado, red).
 import { watch } from 'node:fs';
 import { openDatabase } from './schema.js';
@@ -12,7 +12,7 @@ const HOUR_MS = 3600000;
 // Borra las sesiones completas cuyo último evento es anterior al corte: no deja sesiones a medias (SOLO_STOP falsos).
 // Los rechazos no tienen fecha y se conservan (solo offset y código). Devuelve el número de eventos borrados.
 export function prune(db, nowMs, days = RETENTION_DAYS) {
-  const cutoff = new Date(nowMs - days * 24 * HOUR_MS).toISOString().slice(0, 23) + '0000+00:00'; // mismo formato que H1
+  const cutoff = new Date(nowMs - days * 24 * HOUR_MS).toISOString().slice(0, 23) + '0000+00:00'; // mismo formato que la ingesta
   return Number(db.prepare(`DELETE FROM event WHERE session_id IN
     (SELECT session_id FROM event GROUP BY session_id HAVING max(timestamp) < ?)`).run(cutoff).changes);
 }

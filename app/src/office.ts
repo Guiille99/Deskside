@@ -1,4 +1,4 @@
-// Fase 6: la oficina de un proyecto en Phaser 3. Zona de mesas, pasillo y tres salas (layout.ts). Los personajes
+// La oficina de un proyecto en Phaser 3. Zona de mesas, pasillo y tres salas (layout.ts). Los personajes
 // caminan por el pasillo entre su mesa y la sala que toca según su estado. Todo el texto de la escena se pinta en canvas
 // y el del HUD entra con textContent.
 import Phaser from 'phaser';

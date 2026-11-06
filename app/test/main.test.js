@@ -1,4 +1,4 @@
-// Fase 4: lógica del proceso principal que no depende de Electron (filas, deltas y política de proyectos).
+// Lógica del proceso principal que no depende de Electron (filas, deltas y política de proyectos).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { buildModel } from '../../backend/src/hierarchy.js';
 import { presence } from '../../backend/src/presence.js';
 import { ALL_FIELDS } from '../../backend/src/validator.js';
 
-// Fixtures sintéticos con la forma que H1 guarda (NULL para lo ausente).
+// Fixtures sintéticos con la forma que guarda la ingesta (NULL para lo ausente).
 const S = '11111111-1111-1111-1111-111111111111';
 const T0 = Date.UTC(2026, 10, 2, 10, 0, 0);
 let seq = 0;

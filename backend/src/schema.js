@@ -2,7 +2,7 @@ import { DatabaseSync as Database } from 'node:sqlite'; // DatabaseSync existe e
 import { REJECT_CODES } from './validator.js';
 
 // event: solo campos de la lista blanca más la procedencia (source_id, byte_offset).
-// agent_id, agent_type y tool_use_id admiten NULL: la identidad del agente se resuelve en H2.
+// agent_id, agent_type y tool_use_id admiten NULL: la identidad del agente se resuelve en el modelo de jerarquía.
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS ingest_cursor (
   source_id     TEXT PRIMARY KEY,

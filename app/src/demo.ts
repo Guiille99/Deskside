@@ -1,4 +1,4 @@
-// Fase 5: datos sintéticos para probar la escena fuera de Electron (vite preview), donde no existe window.office.
+// Datos sintéticos para probar la escena fuera de Electron (vite preview), donde no existe window.office.
 // 20 sesiones × 10 agentes en tres proyectos; cada segundo cambian estados y herramientas, y algunos agentes terminan y llegan otros.
 import type { Delta, Project, Row, State } from './types.ts';
 

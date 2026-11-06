@@ -1,10 +1,10 @@
-// H2-B: modelo determinista de identidad y jerarquía. Lee eventos ya validados por H1 y deriva
+// Modelo determinista de identidad y jerarquía. Lee eventos ya validados por la ingesta y deriva
 // sesiones, MAIN, agentes, invocaciones, relaciones y anomalías. No guarda nada y no lee contenido.
 // Evidencia: OBSERVED (los eventos lo demuestran), INFERRED (deducido por reglas), UNKNOWN (no se puede atribuir).
 
 // Ventana de lanzamiento Pre(Agent) <-> SubagentStart. PROVISIONAL y NO CALIBRADA.
 export const LAUNCH_WINDOW_MS = 5000;
-const TICKS_PER_MS = 10000n; // los timestamps de H1 tienen resolución de 100 ns
+const TICKS_PER_MS = 10000n; // los timestamps de la ingesta tienen resolución de 100 ns
 const WINDOW_TICKS = BigInt(LAUNCH_WINDOW_MS) * TICKS_PER_MS;
 
 export const ANOMALY_CODES = ['SOLO_START', 'SOLO_STOP', 'REPEATED', 'NEGATIVE_INTERVAL', 'CONTEXT_CONFLICT',
@@ -210,9 +210,9 @@ function partition(sid, src, items, session, model, anomaly) {
   // shortcut: el cruce lanzador/hijo es cuadrático por partición; optimizar con índice temporal si crecen las sesiones.
 }
 
-// Adaptador de solo lectura sobre la tabla `event` de H1.
+// Adaptador de solo lectura sobre la tabla `event` de la ingesta.
 export function loadModel(db) {
-  // SELECT *: la comparación de duplicados exactos necesita todas las columnas de H1.
+  // SELECT *: la comparación de duplicados exactos necesita todas las columnas de `event`.
   const rows = db.prepare('SELECT * FROM event ORDER BY timestamp, source_id, byte_offset').all();
   return buildModel(rows);
 }

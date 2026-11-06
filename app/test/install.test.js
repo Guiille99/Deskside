@@ -1,4 +1,4 @@
-// Fase 7: instalador del hook global (settings.json sintéticos en %TEMP%) y el hook de app/hook con un APPDATA aislado.
+// Instalador del hook global (settings.json sintéticos en %TEMP%) y el hook de app/hook con un APPDATA aislado.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, realpathSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync, statSync, chmodSync } from 'node:fs';

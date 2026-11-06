@@ -1,10 +1,10 @@
-// Fase 3: estado en vivo de cada sesión (MAIN) y agente a partir del modelo de H2-B y de la hora actual.
+// Estado en vivo de cada sesión (MAIN) y agente a partir del modelo de jerarquía y de la hora actual.
 // Función pura: no lee SQLite, no usa la hora del sistema y no modifica el modelo.
 import { ticks } from './hierarchy.js';
 
 export const STATES = ['WORKING', 'PERMISSION', 'IDLE', 'ERROR', 'ENDED', 'STALE']; // trabajando, esperando permiso, inactivo, error, terminado, caducado
 
-// Caducidades aprobadas (2026-11-02), no calibradas con uso real (ms sin eventos del actor). Hallazgos de la Fase 1:
+// Caducidades aprobadas (2026-11-02), no calibradas con uso real (ms sin eventos del actor). Hallazgos de las pruebas con el hook real:
 // Esc no deja Stop (A2) y un permiso rechazado deja PreToolUse + PermissionRequest sin cierre.
 // ERROR (turno cerrado con StopFailure) espera el siguiente prompt como IDLE: misma caducidad.
 export const TTL_MS = { WORKING: 30 * 60000, PERMISSION: 10 * 60000, IDLE: 24 * 3600000, ERROR: 24 * 3600000 };

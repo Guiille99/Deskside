@@ -1,4 +1,4 @@
-// Fase 4: utilityProcess que ejecuta el servicio de la Fase 3 y envía al proceso principal solo deltas de filas.
+// utilityProcess que ejecuta el servicio del backend y envía al proceso principal solo deltas de filas.
 import { startService } from '../../backend/src/service.js';
 import { presence } from '../../backend/src/presence.js';
 import { toRows, diff } from './rows.js';
