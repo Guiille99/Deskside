@@ -45,6 +45,7 @@
         "to": "backend/package.json"
       }
     ],
+    "icon": "build/claude-office-logo.png",
     "win": {
       "target": "nsis"
     },
