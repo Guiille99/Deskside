@@ -1,5 +1,5 @@
 // Añade o quita el hook global en ~/.claude/settings.json. Solo toca entradas propias: las que ejecutan `hook`
-// (la copia instalada en <appData>/ClaudeOffice/hook). Copia .bak antes de escribir, escritura atómica e idempotente.
+// (la copia instalada en <appData>/Deskside/hook). Copia .bak antes de escribir, escritura atómica e idempotente.
 import { readFileSync, writeFileSync, renameSync, copyFileSync, mkdirSync, statSync, rmSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, win32 } from 'node:path';
 
@@ -60,12 +60,12 @@ export function hookStatus(settingsPath, hook) {
 }
 
 // settings.json puede llevar secretos (env): una sola copia propia, que se sobrescribe.
-const backup = (settingsPath) => `${settingsPath}.claude-office.bak`;
+const backup = (settingsPath) => `${settingsPath}.deskside.bak`;
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Borra las copias con fecha de versiones anteriores (y, con all, también la copia actual). Los .bak ajenos no se tocan.
 function cleanBackups(settingsPath, all) {
-  const old = new RegExp(`^${escape(basename(settingsPath))}\\.claude-office-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.bak$`);
+  const old = new RegExp(`^${escape(basename(settingsPath))}\\.deskside-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.bak$`);
   let files = [];
   try { files = readdirSync(dirname(settingsPath)); } catch { return; } // carpeta inexistente: nada que limpiar
   for (const f of files) if (old.test(f)) rmSync(join(dirname(settingsPath), f), { force: true });
@@ -83,7 +83,7 @@ export function apply(settingsPath, hook, action, hookSrc) {
   const mode = p.before === null ? 0o600 : statSync(settingsPath).mode & 0o777;
   // mode solo se aplica al crear: por eso se borran antes la copia y un temporal que sobrara de un fallo.
   if (p.before !== null) { rmSync(backup(settingsPath), { force: true }); writeFileSync(backup(settingsPath), p.before, { mode }); }
-  const tmp = `${settingsPath}.claude-office.tmp`;
+  const tmp = `${settingsPath}.deskside.tmp`;
   rmSync(tmp, { force: true });
   writeFileSync(tmp, p.after, { mode });
   renameSync(tmp, settingsPath);

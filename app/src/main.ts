@@ -40,7 +40,7 @@ const office = createOffice($('scene'), $('hud'), sessionName);
 
 // Una oficina por proyecto. Las sesiones sin project_id (conflicto o datos anteriores al project_id) van a «Sin proyecto».
 const NONE = '';
-const KEY = 'claude-office.project';
+const KEY = 'deskside.project';
 let selected: string | null = null;
 const projectOf = (r: Row) => { const s = rows[`s:${r.session_id}`]; return (s?.kind === 'session' ? s.project_id : null) ?? NONE; };
 const view = () => (selected === null ? {} : Object.fromEntries(Object.entries(rows).filter(([, r]) => projectOf(r) === selected)));
@@ -153,7 +153,7 @@ function renderHook(h: Hook) {
 }
 
 // El panel se pliega para dar más sitio a la oficina; Phaser (Scale.RESIZE) se recoloca con el resize.
-const PANEL = 'claude-office.panel';
+const PANEL = 'deskside.panel';
 function showPanel(open: boolean) {
   $('panel').hidden = !open;
   $('toggle').setAttribute('aria-expanded', String(open));

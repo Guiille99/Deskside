@@ -1,4 +1,4 @@
-# Claude Office: backend
+# Deskside: backend
 
 Núcleo del proyecto, sin dependencias externas. Este documento cubre:
 

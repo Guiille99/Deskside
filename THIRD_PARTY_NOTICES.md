@@ -1,6 +1,6 @@
 # Avisos de terceros
 
-Claude Office incluye o se distribuye junto a los componentes siguientes. Cada uno conserva su propia licencia.
+Deskside incluye o se distribuye junto a los componentes siguientes. Cada uno conserva su propia licencia.
 
 ## Phaser 3.90.0 (MIT)
 
@@ -64,4 +64,4 @@ La aplicación se ejecuta sobre Electron (MIT), que incluye Chromium y otros com
 
 ## Marcas
 
-Claude Office es un proyecto independiente, no afiliado, patrocinado ni respaldado por Anthropic. Claude y Claude Code son marcas de Anthropic, PBC.
+Deskside es un proyecto independiente, no afiliado, patrocinado ni respaldado por Anthropic. Claude y Claude Code son marcas de Anthropic, PBC.

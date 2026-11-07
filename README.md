@@ -1,4 +1,4 @@
-# Claude Office
+# Deskside
 
 Aplicación de escritorio que muestra la actividad de Claude Code (sesiones, agentes y subagentes) como una oficina virtual en pixel art 2D. Solo usa los **hooks** oficiales de Claude Code: no llama a la API de Anthropic ni consume tokens adicionales.
 
@@ -51,25 +51,25 @@ Cada proyecto se elige con el desplegable de la cabecera: hay una oficina por pr
 
 | Qué | Dónde |
 |---|---|
-| Política por proyecto (`pending`, `enabled`, `excluded`), hook instalado y registro JSONL | `ClaudeOffice` dentro del directorio de datos de aplicación del sistema (`%APPDATA%\ClaudeOffice` en Windows) |
-| Base de datos SQLite | `claude-office.db` en la carpeta `userData` de Electron |
+| Política por proyecto (`pending`, `enabled`, `excluded`), hook instalado y registro JSONL | `Deskside` dentro del directorio de datos de aplicación del sistema (`%APPDATA%\Deskside` en Windows) |
+| Base de datos SQLite | `deskside.db` en la carpeta `userData` de Electron |
 
 La retención por defecto es de 30 días: el servicio borra las sesiones completas cuyo último evento es anterior.
 
-**Aviso:** si `ELECTRON_RUN_AS_NODE=1` está definida en el entorno, `Claude Office.exe` sale con código 9 sin abrir ventana. Elimina la variable antes de ejecutar la aplicación.
+**Aviso:** si `ELECTRON_RUN_AS_NODE=1` está definida en el entorno, `Deskside.exe` sale con código 9 sin abrir ventana. Elimina la variable antes de ejecutar la aplicación.
 
 ### Instalar la aplicación (Windows)
 
-Si tienes el instalador `Claude Office Setup <versión>.exe`:
+Si tienes el instalador `Deskside Setup <versión>.exe`:
 
 1. Ejecútalo. Es un instalador NSIS, no de un solo clic, y se instala solo para el usuario actual (sin permisos de administrador).
-2. Abre **Claude Office**.
+2. Abre **Deskside**.
 3. Pulsa **Panel** y, en **Hook global**, pulsa **Instalar**. Así se añaden las entradas del hook a `settings.json` de Claude Code.
 4. Abre Claude Code en un proyecto. Ese proyecto aparece en **Proyectos** como pendiente: actívalo para que empiece a mostrarse.
 
 **Desinstalar:** desinstala la aplicación desde la configuración de Windows. El desinstalador:
 
-- quita las entradas del hook de `settings.json`, su copia `settings.json.claude-office.bak` y el script instalado;
+- quita las entradas del hook de `settings.json`, su copia `settings.json.deskside.bak` y el script instalado;
 - pregunta si quieres borrar también los datos (registro de eventos, proyectos, `install.key` y base de datos). En una desinstalación silenciosa (`/S`) se conservan;
 - si no puede quitar el hook (por ejemplo, porque `settings.json` no es JSON válido), avisa y no borra los datos.
 
@@ -77,11 +77,11 @@ Al actualizar a una versión nueva no se toca nada de esto.
 
 Si solo quieres dejar de registrar actividad sin desinstalar la app, pulsa **Desinstalar** en **Panel → Hook global**.
 
-La app guarda una sola copia de seguridad de `settings.json` (`settings.json.claude-office.bak`) con el estado anterior al último cambio. Al escribir, borra las copias con fecha que dejaban las versiones anteriores.
+La app guarda una sola copia de seguridad de `settings.json` (`settings.json.deskside.bak`) con el estado anterior al último cambio. Al escribir, borra las copias con fecha que dejaban las versiones anteriores.
 
 ### macOS y Linux
 
-No hay desinstalador que quite el hook. Antes de borrar la aplicación, pulsa **Desinstalar** en **Panel → Hook global**. Si no, `settings.json` seguirá llamando al hook. Los datos están en `ClaudeOffice` y en la carpeta `userData` de la app, dentro del directorio de datos de aplicación del sistema.
+No hay desinstalador que quite el hook. Antes de borrar la aplicación, pulsa **Desinstalar** en **Panel → Hook global**. Si no, `settings.json` seguirá llamando al hook. Los datos están en `Deskside` y en la carpeta `userData` de la app, dentro del directorio de datos de aplicación del sistema.
 
 ### Generar el instalador (desarrollo)
 
@@ -117,4 +117,4 @@ Los tests usan solo fixtures sintéticos, con una marca (`ZZSECRETO7Q`) que no d
 
 Código y arte bajo licencia [MIT](LICENSE). Los avisos de las dependencias están en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Claude Office es un proyecto independiente, no afiliado, patrocinado ni respaldado por Anthropic. Claude y Claude Code son marcas de Anthropic, PBC. Su interfaz es de creación propia, inspirada en el concepto de Pixel Agents, sin código ni arte suyo.
+Deskside es un proyecto independiente, no afiliado, patrocinado ni respaldado por Anthropic. Claude y Claude Code son marcas de Anthropic, PBC. Su interfaz es de creación propia, inspirada en el concepto de Pixel Agents, sin código ni arte suyo.

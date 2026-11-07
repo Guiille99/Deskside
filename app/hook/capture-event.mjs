@@ -1,6 +1,6 @@
 // Hook de Claude Code para macOS y Linux. Equivale a capture-event.ps1, que solo se usa en Windows.
 // Lo ejecuta el binario de la aplicación con ELECTRON_RUN_AS_NODE=1, por lo que no requiere Node instalado.
-// Se instala en <appData>/ClaudeOffice/hook/; la política de proyectos está en la carpeta superior.
+// Se instala en <appData>/Deskside/hook/; la política de proyectos está en la carpeta superior.
 import { readFileSync, writeFileSync, linkSync, unlinkSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { createHmac, randomBytes } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';

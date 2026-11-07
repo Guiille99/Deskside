@@ -53,7 +53,7 @@ try {
     # shortcut: no resuelve enlaces simbolicos, uniones ni nombres 8.3; dos rutas al mismo proyecto dan dos project_id
     $fullDir = [System.IO.Path]::GetFullPath($projectDir).TrimEnd('\', '/')
     $canonical = $fullDir.ToLowerInvariant()
-    $policyDir = Join-Path $env:APPDATA 'ClaudeOffice'
+    $policyDir = Join-Path $env:APPDATA 'Deskside'
     foreach ($d in 'enabled', 'excluded', 'pending') { [void][System.IO.Directory]::CreateDirectory((Join-Path $policyDir $d)) }
     $keyPath = Join-Path $policyDir 'install.key'
     if (-not (Test-Path -LiteralPath $keyPath)) {
@@ -115,7 +115,7 @@ try {
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try { $pathHash = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes([System.IO.Path]::GetFullPath($logPath).ToLowerInvariant())) }
     finally { $sha.Dispose() }
-    $mutex = New-Object System.Threading.Mutex($false, ('Local\ClaudeOfficeHooksLog-' + [BitConverter]::ToString($pathHash, 0, 16).Replace('-', '')))
+    $mutex = New-Object System.Threading.Mutex($false, ('Local\DesksideHooksLog-' + [BitConverter]::ToString($pathHash, 0, 16).Replace('-', '')))
     $locked = $false
     try {
         # shortcut: espera maxima 2 s; la seccion critica dura milisegundos y el hook dispone de 5 s en total, arranque de PowerShell incluido. Si se agota no se escribe sin bloqueo

@@ -8,7 +8,7 @@ import { listProjects, setPolicy } from './policy.js';
 import { EVENTS, apply, entry, errorCode, hookStatus, removeAll } from './install.js';
 
 const here = import.meta.dirname;
-const POLICY_DIR = join(app.getPath('appData'), 'ClaudeOffice');
+const POLICY_DIR = join(app.getPath('appData'), 'Deskside');
 // El hook global (app/hook, copiado a HOOK) escribe aquí.
 const SOURCE = join(POLICY_DIR, 'hooks-events.jsonl');
 // En Windows el hook es un script de PowerShell; en macOS y Linux es JavaScript y lo ejecuta el binario de la aplicación.
@@ -24,8 +24,8 @@ const fromWin = (e) => e.sender === win?.webContents; // solo la ventana propia 
 
 function startHost() {
   const child = utilityProcess.fork(join(here, 'host.js'), [], {
-    serviceName: 'claude-office-service',
-    env: { ...process.env, CO_DB: join(app.getPath('userData'), 'claude-office.db'), CO_SOURCE: SOURCE },
+    serviceName: 'deskside-service',
+    env: { ...process.env, CO_DB: join(app.getPath('userData'), 'deskside.db'), CO_SOURCE: SOURCE },
   });
   child.on('message', (m) => {
     if (m.type === 'delta') { rows = applyDelta(rows, m.delta); send('delta', m.delta); }
@@ -36,7 +36,7 @@ function startHost() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1200, height: 800, title: 'Claude Office', autoHideMenuBar: true,
+    width: 1200, height: 800, title: 'Deskside', autoHideMenuBar: true,
     webPreferences: { preload: join(here, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false },
   });
   win.loadFile(join(here, '..', 'dist', 'index.html'));

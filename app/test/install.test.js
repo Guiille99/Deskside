@@ -12,7 +12,7 @@ const HOOK_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.ps1');
 // realpathSync.native: PowerShell (.NET Framework) expande los nombres cortos 8.3 de Windows (p. ej. RUNNER~1) y Node no;
 // con la ruta ya expandida, el hook .ps1 y el .mjs calculan el mismo project_id.
 const tmp = (t) => { const d = mkdtempSync(join(realpathSync.native(tmpdir()), 'co-h1-install-')); t.after(() => rmSync(d, { recursive: true, force: true })); return d; };
-const paths = (d) => ({ settings: join(d, '.claude', 'settings.json'), hook: join(d, 'ClaudeOffice', 'hook', 'capture-event.ps1') });
+const paths = (d) => ({ settings: join(d, '.claude', 'settings.json'), hook: join(d, 'Deskside', 'hook', 'capture-event.ps1') });
 const baks = (d) => readdirSync(join(d, '.claude')).filter((f) => f.endsWith('.bak'));
 const json = (p) => JSON.parse(readFileSync(p, 'utf8'));
 
@@ -38,7 +38,7 @@ test('idempotente, con copia .bak exacta, y desinstalar deja los ajustes del usu
   writeFileSync(settings, original);
   assert.equal(apply(settings, hook, 'install', HOOK_SRC), true);
   assert.equal(apply(settings, hook, 'install', HOOK_SRC), false);
-  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
+  assert.deepEqual(baks(d), ['settings.json.deskside.bak']);
   assert.equal(readFileSync(join(d, '.claude', baks(d)[0]), 'utf8'), original);
   const s = json(settings);
   assert.equal(s.hooks.Stop.length, 2);
@@ -50,7 +50,7 @@ test('idempotente, con copia .bak exacta, y desinstalar deja los ajustes del usu
   writeFileSync(settings, installed);
   assert.equal(apply(settings, hook, 'uninstall', HOOK_SRC), true);
   // Una sola copia, sobrescrita con el estado anterior al último cambio.
-  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
+  assert.deepEqual(baks(d), ['settings.json.deskside.bak']);
   assert.equal(readFileSync(join(d, '.claude', baks(d)[0]), 'utf8'), installed);
   const u = json(settings);
   assert.deepEqual(u.hooks.Stop, [...USER.hooks.Stop, { hooks: [{ type: 'command', command: 'otro.exe' }] }]);
@@ -89,11 +89,11 @@ test('copias con fecha de versiones anteriores: se borran al escribir; los .bak 
   const d = tmp(t), { settings, hook } = paths(d);
   mkdirSync(join(d, '.claude'));
   writeFileSync(settings, JSON.stringify(USER));
-  const old = ['settings.json.claude-office-2026-11-05T12-00-00-000Z.bak', 'settings.json.claude-office-2026-11-06T08-30-15-123Z.bak'];
-  const foreign = ['settings.json.otro.bak', 'otro.json.claude-office-2026-11-05T12-00-00-000Z.bak', 'settings.json.claude-office-x.bak'];
+  const old = ['settings.json.deskside-2026-11-05T12-00-00-000Z.bak', 'settings.json.deskside-2026-11-06T08-30-15-123Z.bak'];
+  const foreign = ['settings.json.otro.bak', 'otro.json.deskside-2026-11-05T12-00-00-000Z.bak', 'settings.json.deskside-x.bak'];
   for (const f of [...old, ...foreign]) writeFileSync(join(d, '.claude', f), 'ZZSECRETO7Q');
   apply(settings, hook, 'install', HOOK_SRC);
-  assert.deepEqual(baks(d).sort(), ['settings.json.claude-office.bak', ...foreign].sort());
+  assert.deepEqual(baks(d).sort(), ['settings.json.deskside.bak', ...foreign].sort());
 });
 
 test('removeAll: quita las entradas, las copias propias y el hook instalado; conserva lo del usuario', (t) => {
@@ -101,12 +101,12 @@ test('removeAll: quita las entradas, las copias propias y el hook instalado; con
   mkdirSync(join(d, '.claude'));
   writeFileSync(settings, JSON.stringify(USER));
   apply(settings, hook, 'install', HOOK_SRC);
-  writeFileSync(join(d, '.claude', 'settings.json.claude-office-2026-11-05T12-00-00-000Z.bak'), 'x');
+  writeFileSync(join(d, '.claude', 'settings.json.deskside-2026-11-05T12-00-00-000Z.bak'), 'x');
   writeFileSync(join(d, '.claude', 'settings.json.otro.bak'), 'x');
   removeAll(settings, hook);
   assert.deepEqual(json(settings), USER);
   assert.deepEqual(baks(d), ['settings.json.otro.bak']);
-  assert.equal(existsSync(join(d, 'ClaudeOffice', 'hook')), false);
+  assert.equal(existsSync(join(d, 'Deskside', 'hook')), false);
   removeAll(settings, hook); // repetir no falla
 });
 
@@ -118,13 +118,13 @@ test('removeAll con settings.json inválido: SETTINGS_INVALID sin borrar el hook
   writeFileSync(settings, '{');
   assert.throws(() => removeAll(settings, hook), { message: 'SETTINGS_INVALID' });
   assert.equal(readFileSync(settings, 'utf8'), '{');
-  assert.deepEqual(baks(d), ['settings.json.claude-office.bak']);
+  assert.deepEqual(baks(d), ['settings.json.deskside.bak']);
   assert.equal(existsSync(hook), true);
 });
 
 const hasPowerShell = spawnSync('powershell.exe', ['-NoProfile', '-Command', 'exit 0']).status === 0;
-test('hook de app/hook: pendiente, y tras activarlo escribe en %APPDATA%\\ClaudeOffice\\hooks-events.jsonl sin contenido', { skip: hasPowerShell ? false : 'requiere powershell.exe' }, (t) => {
-  const d = tmp(t), proj = join(d, 'proyecto'), co = join(d, 'ClaudeOffice');
+test('hook de app/hook: pendiente, y tras activarlo escribe en %APPDATA%\\Deskside\\hooks-events.jsonl sin contenido', { skip: hasPowerShell ? false : 'requiere powershell.exe' }, (t) => {
+  const d = tmp(t), proj = join(d, 'proyecto'), co = join(d, 'Deskside');
   mkdirSync(proj);
   const run = () => spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', HOOK_SRC], {
     input: JSON.stringify({ hook_event_name: 'PreToolUse', session_id: '11111111-2222', tool_name: 'Bash', tool_use_id: 't1',
@@ -143,7 +143,7 @@ test('hook de app/hook: pendiente, y tras activarlo escribe en %APPDATA%\\Claude
   assert.equal(r.event.project_id, pending.slice(0, -5));
 });
 
-// Hook de macOS/Linux: se ejecuta con el Node actual en cualquier sistema, copiado a <tmp>/ClaudeOffice/hook como lo instala la app.
+// Hook de macOS/Linux: se ejecuta con el Node actual en cualquier sistema, copiado a <tmp>/Deskside/hook como lo instala la app.
 const MJS_SRC = join(import.meta.dirname, '..', 'hook', 'capture-event.mjs');
 const PAYLOADS = [
   { hook_event_name: 'SessionStart', session_id: '11111111-2222', source: 'startup', model: 'claude-x[1m]', permission_mode: 'raro', prompt: 'ZZSECRETO7Q' },
@@ -158,7 +158,7 @@ const PAYLOADS = [
   { hook_event_name: 'Stop', session_id: 'corto' },
 ];
 const setup = (t, ext) => {
-  const d = tmp(t), proj = join(d, 'proyecto'), co = join(d, 'ClaudeOffice'), hook = join(co, 'hook', `capture-event.${ext}`);
+  const d = tmp(t), proj = join(d, 'proyecto'), co = join(d, 'Deskside'), hook = join(co, 'hook', `capture-event.${ext}`);
   mkdirSync(proj); mkdirSync(join(co, 'hook'), { recursive: true });
   writeFileSync(hook, readFileSync(join(import.meta.dirname, '..', 'hook', `capture-event.${ext}`)));
   const cmd = ext === 'mjs' ? [process.execPath, [hook]] : ['powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hook]];
@@ -175,7 +175,7 @@ test('POSIX: sin original settings.json se crea con 0600; si existe, él y su .b
   apply(settings, hook, 'install', HOOK_SRC);
   assert.equal(mode(settings), 0o600);
   chmodSync(settings, 0o640); // un modo distinto de 0600 y de 0644, para ver que se conserva y no se impone
-  writeFileSync(`${settings}.claude-office.tmp`, 'resto de un fallo', { mode: 0o644 });
+  writeFileSync(`${settings}.deskside.tmp`, 'resto de un fallo', { mode: 0o644 });
   apply(settings, hook, 'uninstall', HOOK_SRC);
   assert.equal(mode(settings), 0o640);
   assert.equal(mode(join(d, '.claude', baks(d)[0])), 0o640);
@@ -199,8 +199,8 @@ test('hook .ps1: una entrada antigua con powershell.exe suelto queda como partia
 });
 
 test('hook .mjs: entrada con env y el binario de la app', () => {
-  assert.deepEqual(entry('/h/capture-event.mjs', '/opt/Claude Office/claude-office').hooks[0],
-    { type: 'command', command: '/usr/bin/env', args: ['ELECTRON_RUN_AS_NODE=1', '/opt/Claude Office/claude-office', '/h/capture-event.mjs'], timeout: 5 });
+  assert.deepEqual(entry('/h/capture-event.mjs', '/opt/Deskside/deskside').hooks[0],
+    { type: 'command', command: '/usr/bin/env', args: ['ELECTRON_RUN_AS_NODE=1', '/opt/Deskside/deskside', '/h/capture-event.mjs'], timeout: 5 });
 });
 
 test('hook .mjs: pendiente, excluido no escribe, activado escribe líneas válidas sin contenido', (t) => {
