@@ -115,4 +115,6 @@ Los tests usan solo fixtures sintéticos, con una marca (`ZZSECRETO7Q`) que no d
 
 ## Licencia
 
-El repositorio no incluye un archivo de licencia.
+Código y arte bajo licencia [MIT](LICENSE). Los avisos de las dependencias están en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Claude Office es un proyecto independiente, no afiliado, patrocinado ni respaldado por Anthropic. Claude y Claude Code son marcas de Anthropic, PBC. Su interfaz es de creación propia, inspirada en el concepto de Pixel Agents, sin código ni arte suyo.

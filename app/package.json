@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Claude Office",
   "author": "Guiille99",
+  "license": "MIT",
   "type": "module",
   "main": "main/main.js",
   "scripts": {
@@ -43,6 +44,14 @@
       {
         "from": "../backend/package.json",
         "to": "backend/package.json"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "../THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
       }
     ],
     "icon": "build/claude-office-logo.png",
